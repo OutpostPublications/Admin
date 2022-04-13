@@ -1,63 +1,53 @@
+// TODO: bump lint rules to be able to take advantage of https://github.com/ember-cli/eslint-plugin-ember/issues/560
+/* eslint-disable ghost/ember/alias-model-in-controller */
+
 import $ from 'jquery';
 import Controller, {inject as controller} from '@ember/controller';
 import ValidationEngine from 'ghost-admin/mixins/validation-engine';
+import classic from 'ember-classic-decorator';
+import {action} from '@ember/object';
 import {alias} from '@ember/object/computed';
-import {computed} from '@ember/object';
 import {htmlSafe} from '@ember/template';
 import {isArray as isEmberArray} from '@ember/array';
 import {isVersionMismatchError} from 'ghost-admin/services/ajax';
 import {inject as service} from '@ember/service';
 import {task} from 'ember-concurrency';
 
-export default Controller.extend(ValidationEngine, {
-    application: controller(),
-    ajax: service(),
-    config: service(),
-    ghostPaths: service(),
-    notifications: service(),
-    session: service(),
-    settings: service(),
+@classic
+export default class SigninController extends Controller.extend(ValidationEngine) {
+    @controller
+        application;
 
-    submitting: false,
-    loggingIn: false,
-    authProperties: null,
+    @service ajax;
+    @service config;
+    @service ghostPaths;
+    @service notifications;
+    @service session;
+    @service settings;
 
-    flowErrors: '',
-    passwordResetEmailSent: false,
+    submitting = false;
+    loggingIn = false;
+    authProperties = null;
+    flowErrors = '';
+    passwordResetEmailSent = false;
 
     // ValidationEngine settings
-    validationType: 'signin',
+    validationType = 'signin';
 
     init() {
-        this._super(...arguments);
+        super.init(...arguments);
         this.authProperties = ['identification', 'password'];
-    },
+    }
 
-    signin: alias('model'),
+    @alias('model')
+        signin;
 
-    accentColor: computed('config.accent_color', function () {
-        let color = this.get('config.accent_color');
-        return color;
-    }),
+    @action
+    authenticate() {
+        return this.validateAndAuthenticate.perform();
+    }
 
-    siteIconStyle: computed('config.icon', function () {
-        let icon = this.get('config.icon');
-
-        if (icon) {
-            return htmlSafe(`background-image: url(${icon})`);
-        }
-
-        icon = 'https://static.ghost.org/v4.0.0/images/ghost-orb-2.png';
-        return htmlSafe(`background-image: url(${icon})`);
-    }),
-
-    actions: {
-        authenticate() {
-            return this.validateAndAuthenticate.perform();
-        }
-    },
-
-    authenticate: task(function* (authStrategy, authentication) {
+    @(task(function* (authStrategy, authentication) {
         try {
             return yield this.session
                 .authenticate(authStrategy, ...authentication)
@@ -97,9 +87,10 @@ export default Controller.extend(ValidationEngine, {
 
             return false;
         }
-    }).drop(),
+    }).drop())
+        authenticateTask;
 
-    validateAndAuthenticate: task(function* () {
+    @(task(function* () {
         let signin = this.signin;
         let authStrategy = 'authenticator:cookie';
 
@@ -113,14 +104,15 @@ export default Controller.extend(ValidationEngine, {
 
         try {
             yield this.validate({property: 'signin'});
-            return yield this.authenticate
+            return yield this.authenticateTask
                 .perform(authStrategy, [signin.get('identification'), signin.get('password')]);
         } catch (error) {
             this.set('flowErrors', 'Please fill out the form to sign in.');
         }
-    }).drop(),
+    }).drop())
+        validateAndAuthenticate;
 
-    forgotten: task(function* () {
+    @task(function* () {
         let email = this.get('signin.identification');
         let forgottenUrl = this.get('ghostPaths.url').api('authentication', 'passwordreset');
         let notifications = this.notifications;
@@ -160,4 +152,5 @@ export default Controller.extend(ValidationEngine, {
             }
         }
     })
-});
+        forgotten;
+}

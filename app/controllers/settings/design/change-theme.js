@@ -15,16 +15,9 @@ export default class ChangeThemeController extends Controller {
     officialThemes = [{
         name: 'Casper',
         category: 'Blog',
-        previewUrl: 'https://casper.ghost.io/',
+        previewUrl: 'https://demo.ghost.io/',
         ref: 'default',
         image: 'assets/img/themes/Casper.jpg'
-    }, {
-        name: 'Journal',
-        category: 'Newsletter',
-        url: 'https://github.com/TryGhost/Journal',
-        previewUrl: 'https://journal.ghost.io/',
-        ref: 'TryGhost/Journal',
-        image: 'assets/img/themes/Journal.png'
     }, {
         name: 'Edition',
         category: 'Newsletter',
@@ -32,6 +25,20 @@ export default class ChangeThemeController extends Controller {
         previewUrl: 'https://edition.ghost.io/',
         ref: 'TryGhost/Edition',
         image: 'assets/img/themes/Edition.png'
+    }, {
+        name: 'Headline',
+        category: 'News',
+        url: 'https://github.com/TryGhost/Headline',
+        previewUrl: 'https://headline.ghost.io',
+        ref: 'TryGhost/Headline',
+        image: 'assets/img/themes/Headline.jpg'
+    }, {
+        name: 'Journal',
+        category: 'Newsletter',
+        url: 'https://github.com/TryGhost/Journal',
+        previewUrl: 'https://journal.ghost.io/',
+        ref: 'TryGhost/Journal',
+        image: 'assets/img/themes/Journal.png'
     }, {
         name: 'Digest',
         category: 'Newsletter',
@@ -102,7 +109,7 @@ export default class ChangeThemeController extends Controller {
         previewUrl: 'https://london.ghost.io',
         ref: 'TryGhost/London',
         image: 'assets/img/themes/London.jpg'
-    }]
+    }];
 
     get themesList() {
         const activeTheme = this.themes.findBy('active', true);

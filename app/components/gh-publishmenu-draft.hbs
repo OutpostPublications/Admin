@@ -1,16 +1,17 @@
-<div {{did-insert (fn this.setSaveType "publish")}} ...attributes>
-    <header class="gh-publishmenu-heading">Ready to
+<div ...attributes>
+    <header class="gh-publishmenu-heading" data-test-publishmenu-header>Ready to
         {{#if @canSendEmail}}
             <GhDistributionActionSelect
                 @distributionAction={{@distributionAction}}
                 @setDistributionAction={{@setDistributionAction}}
+                data-test-distribution-action-select
             />
         {{else}}
             publish
         {{/if}}
         this {{@post.displayName}}?
     </header>
-    <section class="gh-publishmenu-content">
+    <section class="gh-publishmenu-content {{if this.disableEmailOption "no-border"}}">
         <div class="gh-publishmenu-section">
             <div class="gh-publishmenu-radio {{if (eq @saveType "publish") "active"}}" {{on "click" (fn this.setSaveType "publish")}}>
                 <div class="gh-publishmenu-radio-button" data-test-publishmenu-published-option></div>
@@ -28,6 +29,8 @@
                         @time={{@post.publishedAtBlogTime}}
                         @setDate={{this.setDate}}
                         @setTime={{this.setTime}}
+                        @onDateError={{this.dateInputDidError}}
+                        @onTimeError={{this.timeInputDidError}}
                         @setTypedDateError={{@setTypedDateError}}
                         @errors={{@post.errors}}
                         @dateErrorProperty="publishedAtBlogDate"
@@ -41,21 +44,45 @@
         </div>
 
         {{#if this.showEmailSection}}
-            <div class="gh-publishmenu-section" {{did-insert (perform this.countTotalMembersTask)}}>
+            <div class="gh-publishmenu-section {{if @isSendingEmailLimited "no-border"}}" {{did-insert (perform this.countTotalMembersTask)}}>
                 <div class="gh-publishmenu-email">
                     {{#if @isSendingEmailLimited}}
                         <p class="gh-box gh-box-alert">{{html-safe @sendingEmailLimitError}}</p>
                     {{else}}
-                        <div class="gh-publishmenu-email-label {{if this.disableEmailOption "pe-none"}}">
-                            <label class="gh-publishmenu-radio-label mb3 {{if this.disableEmailOption "midgrey"}}">Send by email to</label>
+                        <div class="gh-publishmenu-email-label">
+                            <label class="gh-publishmenu-radio-label mb3">Send by email to</label>
 
-                            <div class="form-group">
-                                <GhMembersRecipientSelect
-                                    @filter={{@recipientsFilter}}
-                                    @onChange={{@setSendEmailWhenPublished}}
-                                    @disabled={{this.disableEmailOption}}
-                                />
-                            </div>
+                            {{#if this.disableEmailOption}}
+                                <p class="gh-box gh-content-box">
+                                    <LinkTo @route="members">
+                                        Add members
+                                    </LinkTo>
+                                    to start sending newsletters!
+                                </p>
+                            {{else}}
+                                <div class="form-group">
+                                    {{#if (and (feature "multipleNewsletters") (gt @availableNewsletters.length 1))}}
+                                        <div class="mb3">
+                                            <p>Newsletter</p>
+                                            <PowerSelect
+                                                @selected={{@selectedNewsletter}}
+                                                @options={{@availableNewsletters}}
+                                                @onChange={{@selectNewsletter}}
+                                                @triggerComponent="gh-power-select/trigger"
+                                                @renderInPlace={{true}}
+                                                as |newsletter|
+                                            >
+                                                {{newsletter.name}}
+                                            </PowerSelect>
+                                        </div>
+                                    {{/if}}
+
+                                    <GhMembersRecipientSelect
+                                        @filter={{@recipientsFilter}}
+                                        @onChange={{@setSendEmailWhenPublished}}
+                                    />
+                                </div>
+                            {{/if}}
                         </div>
                     {{/if}}
                 </div>

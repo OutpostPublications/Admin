@@ -21,6 +21,8 @@
 .ember-power-calendar-nav-title {
   flex: 1;
   text-align: center;
+  font-size: 1.35rem;
+  font-weight: 600;
 }
 
 .ember-power-calendar-row {
@@ -41,6 +43,7 @@
   justify-content: center;
   display: flex;
   align-items: center;
+  height: 23px;
 }
 
 .ember-power-calendar-day {
@@ -56,6 +59,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+  height: 23px;
 }
 
 .ember-power-calendar-nav-control {
@@ -76,8 +80,7 @@
 }
 
 .ember-power-calendar-weekdays {
-  color: var(--darkgrey);
-  padding: 4px 0;
+  color: var(--midlightgrey);
 }
 
 .ember-power-calendar-day {
@@ -86,6 +89,7 @@
 
 .ember-power-calendar-nav {
   padding: 0 4px 8px;
+  height: 32px;
 }
 
 .ember-power-calendar-nav-control {
@@ -220,4 +224,19 @@
 
 .ember-power-datepicker-trigger:focus {
     outline: none;
+}
+
+/* Input+Datepicker component */
+.gh-date-picker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+svg.gh-date-picker-cal-icon {
+    display: block;
+    position: absolute;
+    right: 0;
+    top: 9px;
+    font-size: 1.3rem;
 }

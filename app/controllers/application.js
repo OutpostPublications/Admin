@@ -1,21 +1,30 @@
+import classic from 'ember-classic-decorator';
+import {computed} from '@ember/object';
+import {reads} from '@ember/object/computed';
+import {inject as service} from '@ember/service';
 /* eslint-disable ghost/ember/alias-model-in-controller */
 import Controller from '@ember/controller';
-import {computed} from '@ember/object';
-import {inject as service} from '@ember/service';
 
-export default Controller.extend({
-    billing: service(),
-    customViews: service(),
-    config: service(),
-    dropdown: service(),
-    feature: service(),
-    router: service(),
-    session: service(),
-    settings: service(),
-    ui: service(),
+@classic
+export default class ApplicationController extends Controller {
+    @service billing;
+    @service config;
+    @service dropdown;
+    @service feature;
+    @service router;
+    @service session;
+    @service settings;
+    @service ui;
 
-    showBilling: computed.reads('config.hostSettings.billing.enabled'),
-    showNavMenu: computed('router.currentRouteName', 'session.{isAuthenticated,user}', 'ui.isFullScreen', function () {
+    @reads('config.hostSettings.billing.enabled')
+        showBilling;
+
+    @computed(
+        'router.currentRouteName',
+        'session.{isAuthenticated,user}',
+        'ui.isFullScreen'
+    )
+    get showNavMenu() {
         let {router, session, ui} = this;
 
         // if we're in fullscreen mode don't show the nav menu
@@ -31,5 +40,5 @@ export default Controller.extend({
 
         return (router.currentRouteName !== 'error404' || session.isAuthenticated)
                 && !router.currentRouteName.match(/(signin|signup|setup|reset)/);
-    })
-});
+    }
+}

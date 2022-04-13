@@ -1,5 +1,5 @@
 {{#if this.post}}
-    <div class="flex flex-row">
+    <div class="flex flex-row" {{on-key "cmd+p" (action "openPostPreview")}}>
         <GhEditor
             @tagName="section"
             @class="gh-editor gh-view relative"
@@ -9,7 +9,7 @@
                 <div class="flex items-center pe-auto">
                     {{#if this.ui.isFullScreen}}
                         <div class="ml3 mobile flex items-center">
-                            <LinkTo @route={{pluralize this.post.displayName }} @classNames="gh-editor-back-button" data-test-link={{pluralize this.post.displayName}}>
+                            <LinkTo @route={{pluralize this.post.displayName }} class="gh-editor-back-button" data-test-link={{pluralize this.post.displayName}}>
                                 <span>
                                     {{svg-jar "arrow-left"}}
                                     {{capitalize (pluralize this.post.displayName)}}
@@ -42,7 +42,7 @@
                             <GhTaskButton @buttonText="Save"
                                 @task={{this.save}}
                                 @runningText="Saving"
-                                @class="gh-btn gh-btn-blue gh-btn-icon contributor-save-button"
+                                @class="gh-btn gh-btn-icon gh-btn-editor contributor-save-button"
                                 data-test-contributor-save=true />
                         {{else}}
                             <GhPublishmenu
@@ -99,7 +99,7 @@
                 <div class="gh-editor-wordcount">
                     {{gh-pluralize this.wordCount.wordCount "word"}}
                 </div>
-                <a href="https://ghost.org/help/using-the-editor/" class="flex" target="_blank">{{svg-jar "help"}}</a>
+                <a href="https://ghost.org/help/using-the-editor/" class="flex" target="_blank" rel="noopener noreferrer">{{svg-jar "help"}}</a>
             </div>
 
         </GhEditor>
@@ -107,7 +107,6 @@
         {{#if this.showSettingsMenu}}
             <GhPostSettingsMenu
                 @post={{this.post}}
-                @toggleEmailPreviewModal={{action "toggleEmailPreviewModal"}}
                 @deletePost={{action "openDeletePostModal"}}
                 @updateSlugTask={{this.updateSlugTask}}
                 @savePostTask={{this.savePostTask}}
@@ -123,32 +122,18 @@
         {{/if}}
     </button>
 
-    {{#if this.showLeaveEditorModal}}
-        <GhFullscreenModal @modal="leave-editor"
-            @confirm={{action "leaveEditor"}}
-            @close={{action "toggleLeaveEditorModal"}}
-            @modifier="action wide" />
-    {{/if}}
-
     {{#if this.showReAuthenticateModal}}
         <GhFullscreenModal @modal="re-authenticate"
             @close={{action "toggleReAuthenticateModal"}}
             @modifier="action wide" />
     {{/if}}
 
-    {{#if this.showEmailPreviewModal}}
-        <GhFullscreenModal @modal="post-email-preview"
-            @model={{this.post}}
-            @close={{action "toggleEmailPreviewModal"}}
-            @modifier="full-overlay email-preview" />
-    {{/if}}
-
     {{#if this.showUpgradeModal}}
         <GhFullscreenModal
             @modal="upgrade-host-limit"
             @model={{hash
-                message=hostLimitError.context
-                details=hostLimitError.details
+                message=this.hostLimitError.context
+                details=this.hostLimitError.details
             }}
             @close={{action "closeUpgradeModal"}}
             @modifier="action wide"

@@ -1,13 +1,18 @@
-import AuthenticatedRoute from 'ghost-admin/routes/authenticated';
+import AdminRoute from 'ghost-admin/routes/admin';
 import {inject as service} from '@ember/service';
 
-export default class MembershipSettingsRoute extends AuthenticatedRoute {
+export default class MembershipSettingsRoute extends AdminRoute {
+    @service notifications;
     @service settings;
 
-    beforeModel() {
+    beforeModel(transition) {
         super.beforeModel(...arguments);
-        if (!this.session.user.isAdmin) {
-            return this.transitionTo('home');
+
+        if (transition.to.queryParams?.supportAddressUpdate === 'success') {
+            this.notifications.showAlert(
+                `Support email address has been updated`,
+                {type: 'success', key: 'members.settings.support-address.updated'}
+            );
         }
     }
 
@@ -19,7 +24,7 @@ export default class MembershipSettingsRoute extends AuthenticatedRoute {
         willTransition(transition) {
             return this.controller.leaveRoute(transition);
         }
-    }
+    };
 
     buildRouteInfoMetadata() {
         return {

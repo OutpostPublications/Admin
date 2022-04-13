@@ -12,6 +12,7 @@
                 @successText="Saved"
                 @runningText="Saving"
                 @class="gh-btn gh-btn-primary gh-btn-icon"
+                {{on-key "cmd+s"}}
                 data-test-button="save-settings"
             />
         </section>
@@ -40,7 +41,7 @@
                         </div>
                     </section>
 
-                    <div class="gh-setting-members-access">
+                    <div class="gh-setting-rich-dropdown">
                         <Settings::MembersSubscriptionAccess @onChange={{this.membersSubscriptionAccessChanged}} />
                         <Settings::MembersDefaultPostAccess />
                     </div>
@@ -49,7 +50,7 @@
             <div class="gh-setting-members-portalpreview">
                 <div class="gh-setting-members-portal-mock {{if (feature "multipleProducts") "mock-enabled"}}">
                     {{#if (or (eq this.settings.membersSignupAccess 'none') this.switchFromNoneTask.isRunning)}}
-                        <div class="gh-setting-members-portal-disabled">
+                        <div class="gh-setting-members-portal-disabled" data-test-portal-preview-disabled>
                             <span class="lightgrey">{{svg-jar "portal-logo-stroke"}}</span>
                             <h4>Portal disabled</h4>
                             <p>Change your Subscription Access setting to re-enable Portal</p>
@@ -60,7 +61,8 @@
                             @src={{this.portalPreviewUrl}}
                             @invisibleUntilLoaded="portal-ready"
                             @onInserted={{this.portalPreviewInserted}}
-                            @onDestroyed={{this.portalPreviewDestroyed}} />
+                            @onDestroyed={{this.portalPreviewDestroyed}}
+                            data-test-iframe="portal-preview"/>
                     {{/if}}
                 </div>
             </div>
@@ -84,27 +86,51 @@
                             <h4 class="gh-expandable-title">Free</h4>
                             <p class="gh-expandable-description">Free member sign up settings</p>
                         </div>
-                        <button type="button" class="gh-btn" {{on "click" (toggle "freeOpen" this)}} data-test-toggle-pub-info><span>{{if this.freeOpen "Close" "Expand"}}</span></button>
+                        <button type="button" class="gh-btn" {{on "click" (toggle "freeOpen" this)}} data-test-button="toggle-free-settings"><span>{{if this.freeOpen "Close" "Expand"}}</span></button>
                     </div>
                     <div class="gh-expandable-content">
                         {{#liquid-if this.freeOpen}}
-                        <div class="gh-setting-content-extended">
-                            <GhFormGroup @errors={{this.settings.errors}} @hasValidated={{this.settings.hasValidated}} @property="free-welcome-page">
-                                <label for="freeWelcomePage">Welcome page</label>
-                                <GhUrlInput
-                                    @id="freeWelcomePage"
-                                    @value={{readonly this.settings.membersFreeSignupRedirect}}
-                                    @baseUrl={{readonly this.siteUrl}}
-                                    @setResult={{this.setFreeSignupRedirect}}
-                                    @validateUrl={{this.validateFreeSignupRedirect}}
-                                    @placeholder={{readonly this.siteUrl}}
+                        <div class="gh-setting-content-extended" data-test-free-settings-expanded>
+                            {{#if (feature "multipleProducts")}}
+                                <GhProductCard
+                                    @product={{this.freeProduct}}
+                                    @products={{this.products}}
+                                    @openEditProduct={{this.openEditProduct}}
                                 />
-                                <GhErrorMessage
-                                    @errors={{settings.errors}}
-                                    @property="membersFreeSignupRedirect"
-                                />
-                                <p>Redirect to this URL after signup for a free membership</p>
-                            </GhFormGroup>
+                            {{/if}}
+                            {{#if (or (not (feature "tierWelcomePages")) (not (feature "multipleProducts")))}}
+                                <GhFormGroup @errors={{this.settings.errors}} @hasValidated={{this.settings.hasValidated}} @property="free-welcome-page">
+                                    <label for="freeWelcomePage">Welcome page</label>
+                                    <GhUrlInput
+                                        @id="freeWelcomePage"
+                                        @value={{readonly this.settings.membersFreeSignupRedirect}}
+                                        @baseUrl={{readonly this.siteUrl}}
+                                        @setResult={{this.setFreeSignupRedirect}}
+                                        @validateUrl={{this.validateFreeSignupRedirect}}
+                                        @placeholder={{readonly this.siteUrl}}
+                                        data-test-input="old-free-welcome-page"
+                                    />
+                                    <GhErrorMessage
+                                        @errors={{this.settings.errors}}
+                                        @property="membersFreeSignupRedirect"
+                                    />
+                                    <p>Redirect to this URL after signup for a free membership</p>
+                                </GhFormGroup>
+                            {{else}}
+                                <GhFormGroup>
+                                    <label for="welcomePage" class="fw6">Welcome page</label>
+                                    <GhUrlInput
+                                        @id="welcomePage"
+                                        @value={{readonly this.freeProduct.welcomePageURL}}
+                                        @baseUrl={{readonly this.siteUrl}}
+                                        @setResult={{this.setWelcomePageURL}}
+                                        @validateUrl={{this.validateWelcomePageURL}}
+                                        @placeholder={{readonly this.siteUrl}}
+                                        data-test-input="free-welcome-page"
+                                    />
+                                    <p>Redirect to this URL after signup for a free membership</p>
+                                </GhFormGroup>
+                            {{/if}}
                         </div>
                         {{/liquid-if}}
                     </div>
@@ -143,7 +169,8 @@
                             {{else}}
                                 {{#if (feature "multipleProducts")}}
                                     <GhMembershipProductsAlpha
-                                        @products={{this.products}}
+                                        @updatePortalPreview={{this.updatePortalPreview}}
+                                        @products={{this.paidProducts}}
                                         @confirmProductSave={{this.confirmProductSave}}
                                     />
                                 {{else}}
@@ -198,23 +225,24 @@
                                             <p class="response w-100"><span class="red">{{this.stripePlanError}}</span></p>
                                         {{/if}}
                                     </GhFormGroup>
-
                                 {{/if}}
-                                <GhFormGroup @errors={{this.settings.errors}} @hasValidated={{this.settings.hasValidated}} @property="paid-welcome-page">
-                                    <label for="paidWelcomePage">Welcome page</label>
-                                    <GhUrlInput
-                                        @value={{readonly this.settings.membersPaidSignupRedirect}}
-                                        @baseUrl={{readonly this.siteUrl}}
-                                        @setResult={{this.setPaidSignupRedirect}}
-                                        @validateUrl={{this.validatePaidSignupRedirect}}
-                                        @placeholder={{readonly this.siteUrl}}
-                                    />
-                                    <GhErrorMessage
-                                        @errors={{settings.errors}}
-                                        @property="membersPaidSignupRedirect"
-                                    />
-                                    <p>Redirect to this URL after signup for premium membership</p>
-                                </GhFormGroup>
+                                {{#if (or (not (feature "tierWelcomePages")) (not (feature "multipleProducts")))}}
+                                    <GhFormGroup @errors={{this.settings.errors}} @hasValidated={{this.settings.hasValidated}} @property="paid-welcome-page">
+                                        <label for="paidWelcomePage">Welcome page</label>
+                                        <GhUrlInput
+                                            @value={{readonly this.settings.membersPaidSignupRedirect}}
+                                            @baseUrl={{readonly this.siteUrl}}
+                                            @setResult={{this.setPaidSignupRedirect}}
+                                            @validateUrl={{this.validatePaidSignupRedirect}}
+                                            @placeholder={{readonly this.siteUrl}}
+                                        />
+                                        <GhErrorMessage
+                                            @errors={{this.settings.errors}}
+                                            @property="membersPaidSignupRedirect"
+                                        />
+                                        <p>Redirect to this URL after signup for premium membership</p>
+                                    </GhFormGroup>
+                                {{/if}}
                             {{/if}}
                         </div>
                         {{/liquid-if}}
@@ -258,5 +286,16 @@
             @modal="stripe-connect"
             @close={{this.closeStripeConnect}}
             @modifier="action wide stripe-connect" />
+    {{/if}}
+    {{#if this.showProductModal}}
+        <GhFullscreenModal
+            @modal="product"
+            @model={{hash
+                product=this.productModel
+                products=this.products
+            }}
+            @confirm={{this.confirmProductSave}}
+            @close={{this.closeProductModal}}
+            @modifier="edit-product action wide" />
     {{/if}}
 </section>

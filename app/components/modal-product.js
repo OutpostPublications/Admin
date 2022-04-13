@@ -4,9 +4,10 @@ import ProductBenefitItem from '../models/product-benefit-item';
 import classic from 'ember-classic-decorator';
 import {currencies, getCurrencyOptions, getSymbol} from 'ghost-admin/utils/currency';
 import {A as emberA} from '@ember/array';
+import {htmlSafe} from '@ember/template';
 import {isEmpty} from '@ember/utils';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 const CURRENCIES = currencies.map((currency) => {
@@ -21,6 +22,7 @@ const CURRENCIES = currencies.map((currency) => {
 @classic
 export default class ModalProductPrice extends ModalBase {
     @service settings;
+    @service config;
     @tracked model;
     @tracked product;
     @tracked periodVal;
@@ -31,11 +33,31 @@ export default class ModalProductPrice extends ModalBase {
     @tracked stripePlanError = '';
     @tracked benefits = emberA([]);
     @tracked newBenefit = null;
+    @tracked welcomePageURL;
+    @tracked previewCadence = 'yearly';
+    @tracked discountValue = 0;
+
+    accentColorStyle = '';
 
     confirm() {}
 
+    get isFreeProduct() {
+        return this.product.type === 'free';
+    }
+
     get allCurrencies() {
         return getCurrencyOptions();
+    }
+
+    get productCurrency() {
+        if (this.isFreeProduct) {
+            const firstPaidProduct = this.model.products?.find((product) => {
+                return product.type === 'paid';
+            });
+            return firstPaidProduct?.monthlyPrice?.currency || 'usd';
+        } else {
+            return this.product?.monthlyPrice?.currency;
+        }
     }
 
     get selectedCurrency() {
@@ -49,20 +71,52 @@ export default class ModalProductPrice extends ModalBase {
         const yearlyPrice = this.product.get('yearlyPrice');
         if (monthlyPrice) {
             this.stripeMonthlyAmount = (monthlyPrice.amount / 100);
-            this.currency = monthlyPrice.currency;
         }
         if (yearlyPrice) {
             this.stripeYearlyAmount = (yearlyPrice.amount / 100);
         }
+        this.currency = this.productCurrency || 'usd';
         this.benefits = this.product.get('benefits') || emberA([]);
         this.newBenefit = ProductBenefitItem.create({
             isNew: true,
             name: ''
         });
+        this.calculateDiscount();
+
+        this.accentColorStyle = htmlSafe(`color: ${this.settings.get('accentColor')}`);
+    }
+
+    @action
+    validateWelcomePageURL() {
+        const siteUrl = this.siteUrl;
+
+        if (this.welcomePageURL === undefined) {
+            // Not initialised
+            return;
+        }
+
+        if (this.welcomePageURL.href.startsWith(siteUrl)) {
+            const path = this.welcomePageURL.href.replace(siteUrl, '');
+            this.model.product.welcomePageURL = path;
+        } else {
+            this.model.product.welcomePageURL = this.welcomePageURL.href;
+        }
+    }
+
+    get siteUrl() {
+        return this.config.get('blogUrl');
+    }
+
+    // eslint-disable-next-line no-dupe-class-members
+    get welcomePageURL() {
+        return this.model.product.welcomePageURL;
     }
 
     get title() {
         if (this.isExistingProduct) {
+            if (this.isFreeProduct) {
+                return `Edit free membership`;
+            }
             return `Edit tier`;
         }
         return 'New tier';
@@ -82,6 +136,10 @@ export default class ModalProductPrice extends ModalBase {
     setCurrency(event) {
         const newCurrency = event.value;
         this.currency = newCurrency;
+    }
+    @action
+    setWelcomePageURL(url) {
+        this.welcomePageURL = url;
     }
 
     reset() {
@@ -104,25 +162,27 @@ export default class ModalProductPrice extends ModalBase {
             yield this.send('addBenefit', this.newBenefit);
         }
 
-        const monthlyAmount = this.stripeMonthlyAmount * 100;
-        const yearlyAmount = this.stripeYearlyAmount * 100;
-        this.product.set('monthlyPrice', {
-            nickname: 'Monthly',
-            amount: monthlyAmount,
-            active: true,
-            currency: this.currency,
-            interval: 'month',
-            type: 'recurring'
-        });
-        this.product.set('yearlyPrice', {
-            nickname: 'Yearly',
-            amount: yearlyAmount,
-            active: true,
-            currency: this.currency,
-            interval: 'year',
-            type: 'recurring'
-        });
-        this.product.set('benefits', this.benefits);
+        if (!this.isFreeProduct) {
+            const monthlyAmount = Math.round(this.stripeMonthlyAmount * 100);
+            const yearlyAmount = Math.round(this.stripeYearlyAmount * 100);
+            this.product.set('monthlyPrice', {
+                nickname: 'Monthly',
+                amount: monthlyAmount,
+                active: true,
+                currency: this.currency,
+                interval: 'month',
+                type: 'recurring'
+            });
+            this.product.set('yearlyPrice', {
+                nickname: 'Yearly',
+                amount: yearlyAmount,
+                active: true,
+                currency: this.currency,
+                interval: 'year',
+                type: 'recurring'
+            });
+        }
+        this.product.set('benefits', this.benefits.filter(benefit => !benefit.get('isBlank')));
         yield this.product.save();
 
         yield this.confirm();
@@ -149,6 +209,33 @@ export default class ModalProductPrice extends ModalBase {
         this.benefits.pushObject(item);
 
         this.newBenefit = ProductBenefitItem.create({isNew: true, name: ''});
+    }
+
+    calculateDiscount() {
+        const discount = this.stripeMonthlyAmount ? 100 - Math.floor((this.stripeYearlyAmount / 12 * 100) / this.stripeMonthlyAmount) : 0;
+        this.discountValue = discount > 0 ? discount : 0;
+    }
+
+    @action
+    changeCadence(cadence) {
+        this.previewCadence = cadence;
+    }
+
+    @action
+    validateStripePlans() {
+        this.calculateDiscount();
+        this.stripePlanError = undefined;
+
+        try {
+            const yearlyAmount = this.stripeYearlyAmount;
+            const monthlyAmount = this.stripeMonthlyAmount;
+            const symbol = getSymbol(this.currency);
+            if (!yearlyAmount || yearlyAmount < 1 || !monthlyAmount || monthlyAmount < 1) {
+                throw new TypeError(`Subscription amount must be at least ${symbol}1.00`);
+            }
+        } catch (err) {
+            this.stripePlanError = err.message;
+        }
     }
 
     actions = {
@@ -188,23 +275,9 @@ export default class ModalProductPrice extends ModalBase {
             const newCurrency = event.value;
             this.currency = newCurrency;
         },
-        validateStripePlans() {
-            this.stripePlanError = undefined;
-
-            try {
-                const yearlyAmount = this.stripeYearlyAmount;
-                const monthlyAmount = this.stripeMonthlyAmount;
-                const symbol = getSymbol(this.currency);
-                if (!yearlyAmount || yearlyAmount < 1 || !monthlyAmount || monthlyAmount < 1) {
-                    throw new TypeError(`Subscription amount must be at least ${symbol}1.00`);
-                }
-            } catch (err) {
-                this.stripePlanError = err.message;
-            }
-        },
         // needed because ModalBase uses .send() for keyboard events
         closeModal() {
             this.close();
         }
-    }
+    };
 }

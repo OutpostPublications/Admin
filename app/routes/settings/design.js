@@ -1,21 +1,14 @@
-import AuthenticatedRoute from 'ghost-admin/routes/authenticated';
+import AdminRoute from 'ghost-admin/routes/authenticated';
 import {inject as service} from '@ember/service';
 
-export default class SettingsDesignRoute extends AuthenticatedRoute {
+export default class SettingsDesignRoute extends AdminRoute {
     @service customThemeSettings;
     @service feature;
     @service modals;
     @service settings;
     @service themeManagement;
     @service ui;
-
-    beforeModel() {
-        super.beforeModel(...arguments);
-
-        if (!this.session.user.isAdmin) {
-            return this.transitionTo('site');
-        }
-    }
+    @service session;
 
     model() {
         // background refresh of preview
@@ -28,6 +21,16 @@ export default class SettingsDesignRoute extends AuthenticatedRoute {
             this.settings.reload(),
             this.customThemeSettings.load()
         ]);
+    }
+
+    beforeModel() {
+        super.beforeModel(...arguments);
+
+        const user = this.session.user;
+
+        if (!user.isAdmin) {
+            return this.transitionTo('settings.staff.user', user);
+        }
     }
 
     activate() {

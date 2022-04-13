@@ -1,8 +1,8 @@
 import Component from '@glimmer/component';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 
-export default class DeletePostModalComponent extends Component {
+export default class DeletePostModal extends Component {
     @service notifications;
     @service router;
 

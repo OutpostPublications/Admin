@@ -1,10 +1,10 @@
-<section class="gh-canvas">
+<section class="gh-canvas" {{on-key "c" (action "newTag")}}>
     <GhCanvasHeader class="gh-canvas-header">
         <h2 class="gh-canvas-title" data-test-screen-title>Tags</h2>
         <section class="view-actions">
             <div class="gh-contentfilter gh-btn-group">
-                <button class="gh-btn {{if (eq this.type "public") "gh-btn-group-selected"}}" {{action "changeType" "public"}}><span>Public tags</span></button>
-                <button class="gh-btn {{if (eq this.type "internal") "gh-btn-group-selected"}}" {{action "changeType" "internal"}}><span>Internal tags</span></button>
+                <button class="gh-btn {{if (eq this.type "public") "gh-btn-group-selected"}}" type="button" {{action "changeType" "public"}}><span>Public tags</span></button>
+                <button class="gh-btn {{if (eq this.type "internal") "gh-btn-group-selected"}}" type="button" {{action "changeType" "internal"}}><span>Internal tags</span></button>
             </div>
             <LinkTo @route="tag.new" class="gh-btn gh-btn-primary"><span>New tag</span></LinkTo>
         </section>
@@ -26,8 +26,8 @@
                 <li class="no-posts-box">
                     <div class="no-posts">
                             {{svg-jar "tags-placeholder" class="gh-tags-placeholder"}}
-                            <h3>You haven't created any {{this.type}} tags yet!</h3>
-                            <LinkTo @route="tag.new" class="gh-btn gh-btn-primary gh-btn-lg gh-btn-green">
+                            <h4>Start organizing your content.</h4>
+                            <LinkTo @route="tag.new" class="gh-btn gh-btn-green">
                                 <span>Create a new tag</span>
                             </LinkTo>
                     </div>

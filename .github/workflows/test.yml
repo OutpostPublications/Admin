@@ -3,19 +3,20 @@ on:
   pull_request:
   push:
     branches:
-      - 'v4.*'
+      - "v4.*"
+      - "5.0"
       - main
-      - 'renovate/*'
+      - "renovate/*"
 jobs:
   prod-build:
     runs-on: ubuntu-18.04
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
     name: Production Build
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '14.17.0'
+          node-version: "14.17.0"
 
       - run: yarn
       - run: grunt shell:ember:prod
@@ -31,13 +32,14 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
     name: Lint
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '14.17.0'
+          node-version: "14.17.0"
 
       - run: yarn
       - run: yarn lint:js
+      - run: yarn lint:hbs
 
       - uses: daniellockyer/action-slack-build@master
         if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -50,7 +52,7 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
     strategy:
       matrix:
-        browser: [ 'Firefox', 'Chrome' ]
+        browser: ["Firefox", "Chrome"]
     name: ${{ matrix.browser }}
     env:
       MOZ_HEADLESS: 1
@@ -58,10 +60,10 @@ jobs:
       CI: true
       COVERAGE: true
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: '14.17.0'
+          node-version: "14.17.0"
 
       - run: yarn
       - run: yarn test

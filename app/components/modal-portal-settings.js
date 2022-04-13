@@ -14,6 +14,8 @@ export default ModalComponent.extend({
     store: service(),
     session: service(),
     feature: service(),
+    ghostPaths: service(),
+    ajax: service(),
 
     page: 'signup',
     iconExtensions: null,
@@ -22,6 +24,7 @@ export default ModalComponent.extend({
     showLinksPage: false,
     showLeaveSettingsModal: false,
     isPreloading: true,
+    changedProducts: null,
     portalPreviewGuid: 'modal-portal-settings',
 
     confirm() {},
@@ -31,6 +34,14 @@ export default ModalComponent.extend({
         return htmlSafe(`background-color: ${color}`);
     }),
 
+    disableUpdateSupportAddressButton: computed('supportAddress', function () {
+        const savedSupportAddress = this.get('settings.membersSupportAddress') || '';
+        if (!savedSupportAddress.includes('@') && this.config.emailDomain) {
+            return !this.supportAddress || (this.supportAddress === `${savedSupportAddress}@${this.config.emailDomain}`);
+        }
+        return !this.supportAddress || (this.supportAddress === savedSupportAddress);
+    }),
+
     showModalLinkOrAttribute: computed('isShowModalLink', function () {
         if (this.isShowModalLink) {
             return `#/portal`;
@@ -38,8 +49,19 @@ export default ModalComponent.extend({
         return `data-portal`;
     }),
 
-    portalPreviewUrl: computed('page', 'membersUtils.{isFreeChecked,isMonthlyChecked,isYearlyChecked}', 'settings.{portalName,portalButton,portalButtonIcon,portalButtonSignupText,portalButtonStyle,accentColor,portalPlans.[],portalProducts.[]}', function () {
+    portalPreviewUrl: computed('page', 'model.products.[]', 'changedProducts.[]', 'membersUtils.{isFreeChecked,isMonthlyChecked,isYearlyChecked}', 'settings.{portalName,portalButton,portalButtonIcon,portalButtonSignupText,portalButtonStyle,accentColor,portalPlans.[]}', function () {
         const options = this.getProperties(['page']);
+        options.portalProducts = this.model.products?.filter((product) => {
+            return product.get('visibility') === 'public'
+                && product.get('active') === true
+                && product.get('type') === 'paid';
+        }).map((product) => {
+            return product.id;
+        });
+        const freeProduct = this.model.products?.find((product) => {
+            return product.type === 'free';
+        });
+        options.isFreeChecked = freeProduct?.visibility === 'public';
         return this.membersUtils.getPortalPreviewUrl(options);
     }),
 
@@ -71,23 +93,39 @@ export default ModalComponent.extend({
         const allowedPlans = this.settings.get('portalPlans') || [];
         return (this.membersUtils.isStripeEnabled && allowedPlans.includes('yearly'));
     }),
-    products: computed('model.products.[]', 'settings.portalProducts.[]', 'isPreloading', function () {
-        if (this.isPreloading || !this.model.products) {
+    products: computed('model.products.[]', 'changedProducts.[]', 'isPreloading', function () {
+        const paidProducts = this.model.products?.filter(product => product.type === 'paid' && product.active === true);
+        if (this.isPreloading || !paidProducts?.length) {
             return [];
         }
-        const portalProducts = this.settings.get('portalProducts') || [];
-        const products = this.model.products.map((product) => {
+
+        const products = paidProducts.map((product) => {
             return {
                 id: product.id,
                 name: product.name,
-                checked: portalProducts.includes(product.id)
+                checked: product.visibility === 'public'
             };
         });
         return products;
     }),
 
     showPortalTiers: computed('products', 'feature.multipleProducts', function () {
-        return this.get('products')?.length > 1 && this.feature.get('multipleProducts');
+        if (this.feature.get('multipleProducts')) {
+            return true;
+        }
+        return false;
+    }),
+
+    showPortalPrices: computed('products', 'feature.multipleProducts', function () {
+        if (!this.feature.get('multipleProducts')) {
+            return true;
+        }
+
+        const visibleProducts = this.model.products?.filter((product) => {
+            return product.visibility === 'public' && product.type === 'paid';
+        });
+
+        return !!visibleProducts?.length;
     }),
 
     init() {
@@ -98,6 +136,8 @@ export default ModalComponent.extend({
             {name: 'text-only', label: 'Text only'}
         ];
         this.iconExtensions = ICON_EXTENSIONS;
+        this.changedProducts = [];
+        this.set('supportAddress', this.parseEmailAddress(this.settings.get('membersSupportAddress')));
     },
 
     didInsertElement() {
@@ -152,6 +192,7 @@ export default ModalComponent.extend({
         setButtonStyle(buttonStyle) {
             this.settings.set('portalButtonStyle', buttonStyle.name);
         },
+
         setSignupButtonText(event) {
             this.settings.set('portalButtonSignupText', event.target.value);
         },
@@ -205,36 +246,57 @@ export default ModalComponent.extend({
         },
 
         validateFreeSignupRedirect() {
-            return this._validateSignupRedirect(this.get('freeSignupRedirect'), 'membersFreeSignupRedirect');
+            return this._validateSignupRedirect(this.freeSignupRedirect, 'membersFreeSignupRedirect');
         },
 
         validatePaidSignupRedirect() {
-            return this._validateSignupRedirect(this.get('paidSignupRedirect'), 'membersPaidSignupRedirect');
+            return this._validateSignupRedirect(this.paidSignupRedirect, 'membersPaidSignupRedirect');
+        },
+
+        setSupportAddress(supportAddress) {
+            this.set('supportAddress', supportAddress);
         }
+    },
+
+    parseEmailAddress(address) {
+        const emailAddress = address || 'noreply';
+        // Adds default domain as site domain
+        if (emailAddress.indexOf('@') < 0 && this.config.emailDomain) {
+            return `${emailAddress}@${this.config.emailDomain}`;
+        }
+        return emailAddress;
     },
 
     updateAllowedPlan(plan, isChecked) {
         const portalPlans = this.settings.get('portalPlans') || [];
         const allowedPlans = [...portalPlans];
+        const freeProduct = this.model.products.find(p => p.type === 'free');
 
         if (!isChecked) {
             this.settings.set('portalPlans', allowedPlans.filter(p => p !== plan));
+            if (plan === 'free') {
+                freeProduct.set('visibility', 'none');
+            }
         } else {
             allowedPlans.push(plan);
             this.settings.set('portalPlans', allowedPlans);
+            if (plan === 'free') {
+                freeProduct.set('visibility', 'public');
+            }
         }
     },
 
     updateAllowedProduct(productId, isChecked) {
-        const portalProducts = this.settings.get('portalProducts') || [];
-        const allowedProducts = [...portalProducts];
-
+        const product = this.model.products.find(p => p.id === productId);
         if (!isChecked) {
-            this.settings.set('portalProducts', allowedProducts.filter(p => p !== productId));
+            product.set('visibility', 'none');
         } else {
-            allowedProducts.push(productId);
-            this.settings.set('portalProducts', allowedProducts);
+            product.set('visibility', 'public');
         }
+        let portalProducts = this.model.products.filter((p) => {
+            return p.visibility === 'public';
+        }).map(p => p.id);
+        this.set('changedProducts', portalProducts);
     },
 
     _validateSignupRedirect(url, type) {
@@ -295,7 +357,36 @@ export default ModalComponent.extend({
         if (this.settings.get('errors').length !== 0) {
             return;
         }
+
+        // Save tier visibility if changed
+        yield Promise.all(
+            this.model.products.filter((product) => {
+                const changedAttrs = product.changedAttributes();
+                return !!changedAttrs.visibility;
+            }).map((product) => {
+                return product.save();
+            })
+        );
+
         yield this.settings.save();
+
         this.closeModal();
+    }).drop(),
+
+    updateSupportAddress: task(function* () {
+        let url = this.get('ghostPaths.url').api('/settings/members/email');
+        try {
+            const response = yield this.ajax.post(url, {
+                data: {
+                    email: this.supportAddress,
+                    type: 'supportAddressUpdate'
+                }
+            });
+            // this.toggleProperty('showSupportAddressConfirmation');
+            return response;
+        } catch (e) {
+            // Failed to send email, retry
+            return false;
+        }
     }).drop()
 });

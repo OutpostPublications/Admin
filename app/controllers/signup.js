@@ -56,7 +56,7 @@ export default Controller.extend({
         } catch (error) {
             // ValidationEngine throws undefined
             if (!error) {
-                this.set('flowErrors', 'Please fill out the form to complete your sign-up');
+                this.set('flowErrors', 'Please fill out the form to complete your signup');
                 return false;
             }
 

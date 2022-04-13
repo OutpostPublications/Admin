@@ -21,6 +21,10 @@ export const DEFAULT_QUERY_PARAMS = {
         search: null,
         filter: null,
         order: null
+    },
+    'members-activity': {
+        excludedEvents: null,
+        member: null
     }
 };
 

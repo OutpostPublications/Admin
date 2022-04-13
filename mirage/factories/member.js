@@ -1,6 +1,6 @@
 import faker from 'faker';
 import moment from 'moment';
-import {Factory, trait} from 'ember-cli-mirage';
+import {Factory, trait} from 'miragejs';
 
 let randomDate = function randomDate(start = moment().subtract(30, 'days').toDate(), end = new Date()) {
     return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
@@ -11,7 +11,7 @@ export default Factory.extend({
     email: faker.internet.email,
     status: 'free',
     subscribed: true,
-    createdAt() { return randomDate(); },
+    createdAt() { return moment(randomDate()).format('YYYY-MM-DD HH:mm:ss'); },
 
     free: trait({
         status: 'free'

@@ -11,6 +11,7 @@ export default Model.extend(ValidationEngine, {
     note: attr('string'),
     status: attr('string'),
     createdAtUTC: attr('moment-utc'),
+    lastSeenAtUTC: attr('moment-utc'),
     subscriptions: attr('member-subscription'),
     subscribed: attr('boolean', {defaultValue: true}),
     comped: attr('boolean', {defaultValue: false}),
@@ -22,7 +23,7 @@ export default Model.extend(ValidationEngine, {
     products: attr('member-product'),
 
     labels: hasMany('label', {embedded: 'always', async: false}),
-    emailRecipients: hasMany('emailRecipient', {embedded: 'always', async: false}),
+    emailRecipients: hasMany('emailRecipient', {async: true}),
 
     ghostPaths: service(),
     ajax: service(),
@@ -40,7 +41,7 @@ export default Model.extend(ValidationEngine, {
     },
 
     fetchSigninUrl: task(function* () {
-        let url = this.get('ghostPaths.url').api('members', this.get('id'), 'signin_urls');
+        let url = this.get('ghostPaths.url').api('members', this.id, 'signin_urls');
 
         let response = yield this.ajax.request(url);
 

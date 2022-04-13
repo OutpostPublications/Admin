@@ -18,6 +18,7 @@
             <GhPublishmenuScheduled
                 @post={{this.post}}
                 @saveType={{this.saveType}}
+                @emailOnly={{this.emailOnly}}
                 @isClosing={{this.isClosing}}
                 @canSendEmail={{this.canSendEmail}}
                 @recipientsFilter={{this.sendEmailWhenPublished}}
@@ -41,6 +42,9 @@
                 @sendingEmailLimitError={{this.sendingEmailLimitError}}
                 @distributionAction={{this.distributionAction}}
                 @setDistributionAction={{action "setDistributionAction"}}
+                @availableNewsletters={{this.availableNewsletters}}
+                @selectedNewsletter={{this.selectedNewsletter}}
+                @selectNewsletter={{this.selectNewsletter}}
                 data-test-publishmenu-draft="true" />
         {{/if}}
 
@@ -49,7 +53,7 @@
             or cancel the task when the post status updates and switches components
          --}}
         <footer class="gh-publishmenu-footer">
-            <button class="gh-btn gh-btn-outline" {{on "click" (action dd.actions.close)}} data-test-publishmenu-cancel>
+            <button class="gh-btn gh-btn-outline" data-test-publishmenu-cancel type="button" {{on "click" (action dd.actions.close)}}>
                 <span>Cancel</span>
             </button>
             <GhTaskButton

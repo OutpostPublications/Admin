@@ -1,14 +1,14 @@
+import {action} from '@ember/object';
 /* eslint-disable camelcase */
 import AuthenticatedRoute from 'ghost-admin/routes/authenticated';
-import CurrentUserSettings from 'ghost-admin/mixins/current-user-settings';
 
-export default AuthenticatedRoute.extend(CurrentUserSettings, {
+export default class UserRoute extends AuthenticatedRoute {
     model(params) {
         return this.store.queryRecord('user', {slug: params.user_slug, include: 'count.posts'});
-    },
+    }
 
     afterModel(user) {
-        this._super(...arguments);
+        super.afterModel(...arguments);
 
         const currentUser = this.session.user;
 
@@ -28,45 +28,46 @@ export default AuthenticatedRoute.extend(CurrentUserSettings, {
                 this.controller.set('personalTokenRegenerated', false);
             });
         }
-    },
+    }
 
     serialize(model) {
         return {user_slug: model.get('slug')};
-    },
+    }
 
-    actions: {
-        didTransition() {
-            this.modelFor('settings.staff.user').get('errors').clear();
-        },
+    @action
+    didTransition() {
+        this.modelFor('settings.staff.user').get('errors').clear();
+    }
 
-        save() {
-            this.get('controller.save').perform();
-        },
+    @action
+    save() {
+        this.controller.save.perform();
+    }
 
-        willTransition(transition) {
-            let controller = this.controller;
-            let user = controller.user;
-            let dirtyAttributes = controller.dirtyAttributes;
-            let modelIsDirty = user.get('hasDirtyAttributes');
+    @action
+    willTransition(transition) {
+        let controller = this.controller;
+        let user = controller.user;
+        let dirtyAttributes = controller.dirtyAttributes;
+        let modelIsDirty = user.get('hasDirtyAttributes');
 
-            // always reset the password properties on the user model when leaving
-            if (user) {
-                user.set('password', '');
-                user.set('newPassword', '');
-                user.set('ne2Password', '');
-            }
-
-            if (modelIsDirty || dirtyAttributes) {
-                transition.abort();
-                controller.send('toggleLeaveSettingsModal', transition);
-                return;
-            }
+        // always reset the password properties on the user model when leaving
+        if (user) {
+            user.set('password', '');
+            user.set('newPassword', '');
+            user.set('ne2Password', '');
         }
-    },
+
+        if (modelIsDirty || dirtyAttributes) {
+            transition.abort();
+            controller.send('toggleLeaveSettingsModal', transition);
+            return;
+        }
+    }
 
     buildRouteInfoMetadata() {
         return {
             titleToken: 'Staff - User'
         };
     }
-});
+}

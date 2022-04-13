@@ -3,7 +3,7 @@ import envConfig from 'ghost-admin/config/environment';
 import {action} from '@ember/object';
 import {currencies, getCurrencyOptions, getSymbol} from 'ghost-admin/utils/currency';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 const CURRENCIES = currencies.map((currency) => {
@@ -173,8 +173,9 @@ export default class GhLaunchWizardSetPricingComponent extends Component {
             this.stripeMonthlyAmount = storedData.monthlyAmount;
             this.stripeYearlyAmount = storedData.yearlyAmount;
         } else {
-            const products = yield this.store.query('product', {include: 'monthly_price,yearly_price'});
+            const products = yield this.store.query('product', {filter: 'type:paid', include: 'monthly_price,yearly_price'});
             this.product = products.firstObject;
+
             let portalPlans = this.settings.get('portalPlans') || [];
 
             this.isMonthlyChecked = portalPlans.includes('monthly');
@@ -198,8 +199,8 @@ export default class GhLaunchWizardSetPricingComponent extends Component {
         const options = {
             disableBackground: true,
             currency: this.selectedCurrency.value,
-            monthlyPrice: this.stripeMonthlyAmount * 100,
-            yearlyPrice: this.stripeYearlyAmount * 100,
+            monthlyPrice: Math.round(this.stripeMonthlyAmount * 100),
+            yearlyPrice: Math.round(this.stripeYearlyAmount * 100),
             isMonthlyChecked: this.isMonthlyChecked,
             isYearlyChecked: this.isYearlyChecked,
             isFreeChecked: this.isFreeChecked,

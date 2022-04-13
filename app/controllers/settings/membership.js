@@ -3,7 +3,7 @@ import envConfig from 'ghost-admin/config/environment';
 import {action} from '@ember/object';
 import {currencies, getCurrencyOptions, getSymbol} from 'ghost-admin/utils/currency';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 const CURRENCIES = currencies.map((currency) => {
@@ -33,6 +33,7 @@ export default class MembersAccessController extends Controller {
     @tracked productModel = null;
     @tracked paidSignupRedirect;
     @tracked freeSignupRedirect;
+    @tracked welcomePageURL;
     @tracked stripeMonthlyAmount = 5;
     @tracked stripeYearlyAmount = 50;
     @tracked currency = 'usd';
@@ -43,6 +44,14 @@ export default class MembersAccessController extends Controller {
     portalPreviewGuid = Date.now().valueOf();
 
     queryParams = ['showPortalSettings'];
+
+    get freeProduct() {
+        return this.products?.find(product => product.type === 'free');
+    }
+
+    get paidProducts() {
+        return this.products?.filter(product => product.type === 'paid');
+    }
 
     get allCurrencies() {
         return getCurrencyOptions();
@@ -135,6 +144,11 @@ export default class MembersAccessController extends Controller {
     }
 
     @action
+    setWelcomePageURL(url) {
+        this.welcomePageURL = url;
+    }
+
+    @action
     validatePaidSignupRedirect() {
         return this._validateSignupRedirect(this.paidSignupRedirect, 'membersPaidSignupRedirect');
     }
@@ -142,6 +156,23 @@ export default class MembersAccessController extends Controller {
     @action
     validateFreeSignupRedirect() {
         return this._validateSignupRedirect(this.freeSignupRedirect, 'membersFreeSignupRedirect');
+    }
+
+    @action
+    validateWelcomePageURL() {
+        const siteUrl = this.siteUrl;
+
+        if (this.welcomePageURL === undefined) {
+            // Not initialised
+            return;
+        }
+
+        if (this.welcomePageURL.href.startsWith(siteUrl)) {
+            const path = this.welcomePageURL.href.replace(siteUrl, '');
+            this.freeProduct.welcomePageURL = path;
+        } else {
+            this.freeProduct.welcomePageURL = this.welcomePageURL.href;
+        }
     }
 
     @action
@@ -228,17 +259,27 @@ export default class MembersAccessController extends Controller {
     @action
     updatePortalPreview({forceRefresh} = {forceRefresh: false}) {
         // TODO: can these be worked out from settings in membersUtils?
-        const monthlyPrice = this.stripeMonthlyAmount * 100;
-        const yearlyPrice = this.stripeYearlyAmount * 100;
+        const monthlyPrice = Math.round(this.stripeMonthlyAmount * 100);
+        const yearlyPrice = Math.round(this.stripeYearlyAmount * 100);
         let portalPlans = this.settings.get('portalPlans') || [];
 
         let isMonthlyChecked = portalPlans.includes('monthly');
         let isYearlyChecked = portalPlans.includes('yearly');
 
+        const products = this.store.peekAll('product');
+        const portalProducts = products?.filter((product) => {
+            return product.get('visibility') === 'public'
+                && product.get('active') === true
+                && product.get('type') === 'paid';
+        }).map((product) => {
+            return product.id;
+        });
+
         const newUrl = new URL(this.membersUtils.getPortalPreviewUrl({
             button: false,
             monthlyPrice,
             yearlyPrice,
+            portalProducts,
             currency: this.currency,
             isMonthlyChecked,
             isYearlyChecked,
@@ -311,8 +352,10 @@ export default class MembersAccessController extends Controller {
 
     @task({drop: true})
     *fetchProducts() {
-        this.products = yield this.store.query('product', {include: 'monthly_price,yearly_price,benefits'});
-        this.product = this.products.firstObject;
+        this.products = yield this.store.query('product', {
+            include: 'monthly_price,yearly_price,benefits'
+        });
+        this.product = this.paidProducts.firstObject;
         this.setupPortalProduct(this.product);
     }
 
@@ -344,6 +387,7 @@ export default class MembersAccessController extends Controller {
                 return;
             }
             const result = yield this.settings.save();
+            yield this.freeProduct.save();
             this.updatePortalPreview(options);
             return result;
         }
@@ -352,8 +396,8 @@ export default class MembersAccessController extends Controller {
     async saveProduct() {
         const isStripeConnected = this.settings.get('stripeConnectAccountId');
         if (this.product && isStripeConnected) {
-            const monthlyAmount = this.stripeMonthlyAmount * 100;
-            const yearlyAmount = this.stripeYearlyAmount * 100;
+            const monthlyAmount = Math.round(this.stripeMonthlyAmount * 100);
+            const yearlyAmount = Math.round(this.stripeYearlyAmount * 100);
 
             this.product.set('monthlyPrice', {
                 nickname: 'Monthly',

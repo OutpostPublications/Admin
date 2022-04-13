@@ -1,16 +1,21 @@
 <section class="gh-canvas">
     <GhCanvasHeader class="gh-canvas-header">
-        <h2 class="gh-canvas-title" data-test-screen-title>
-            <LinkTo @route="settings">Settings</LinkTo>
-            <span>{{svg-jar "arrow-right"}}</span>
-            <LinkTo @route="settings.staff" data-test-staff-link={{true}}>Staff</LinkTo>
-            <span>{{svg-jar "arrow-right"}}</span>
-            {{this.user.name}}
+        {{!-- Remove breadcrumbs for Authors and Contributors --}}
+        {{#if this.currentUser.isAuthorOrContributor}}
+            <h2 class="gh-canvas-title" data-test-screen-title>Your profile</h2>
+        {{else}}
+            <h2 class="gh-canvas-title" data-test-screen-title>
+                <LinkTo @route="settings">Settings</LinkTo>
+                <span>{{svg-jar "arrow-right"}}</span>
+                <LinkTo @route="settings.staff" data-test-staff-link={{true}}>Staff</LinkTo>
+                <span>{{svg-jar "arrow-right"}}</span>
+                {{this.user.name}}
 
-            {{#if this.user.isSuspended}}
-            <span class="gh-badge suspended" data-test-suspended-badge>Suspended</span>
-            {{/if}}
-        </h2>
+                {{#if this.user.isSuspended}}
+                    <span class="gh-badge suspended" data-test-suspended-badge>Suspended</span>
+                {{/if}}
+            </h2>
+        {{/if}}
 
         {{#if this.showLeaveSettingsModal}}
             <GhFullscreenModal @modal="leave-settings"
@@ -31,7 +36,7 @@
                     <GhDropdown @name="user-actions-menu" @tagName="ul" @classNames="user-actions-menu dropdown-menu dropdown-align-right">
                         {{#if this.canMakeOwner}}
                             <li>
-                                <button {{action "toggleTransferOwnerModal"}}>
+                                <button type="button" {{action "toggleTransferOwnerModal"}}>
                                     Make owner
                                 </button>
                                 {{#if this.showTransferOwnerModal}}
@@ -44,20 +49,20 @@
                         {{/if}}
                         {{#if this.deleteUserActionIsVisible}}
                             <li>
-                                <button {{action "toggleDeleteUserModal"}} class="delete" data-test-delete-button>
+                                <button class="delete" data-test-delete-button type="button" {{action "toggleDeleteUserModal"}}>
                                     Delete user
                                 </button>
                             </li>
                             {{#if this.user.isActive}}
                                 <li>
-                                    <button {{action "toggleSuspendUserModal"}} class="suspend" data-test-suspend-button>
+                                    <button class="suspend" data-test-suspend-button type="button" {{action "toggleSuspendUserModal"}}>
                                         Suspend user
                                     </button>
                                 </li>
                             {{/if}}
                             {{#if this.user.isSuspended}}
                                 <li>
-                                    <button {{action "toggleUnsuspendUserModal"}} class="unsuspend" data-test-unsuspend-button>
+                                    <button class="unsuspend" data-test-unsuspend-button type="button" {{action "toggleUnsuspendUserModal"}}>
                                         Un-suspend user
                                     </button>
                                 </li>
@@ -89,7 +94,7 @@
                 {{#if this.limitErrorMessage}}
                     <GhFullscreenModal @modal="upgrade-unsuspend-user-host-limit"
                         @model={{hash
-                            message=limitErrorMessage
+                            message=this.limitErrorMessage
                         }}
                         @close={{action "toggleUnsuspendUserModal"}}
                         @modifier="action wide" />
@@ -104,7 +109,7 @@
         </section>
     </GhCanvasHeader>
 
-    {{#if user.isLocked}}
+    {{#if this.user.isLocked}}
         <p class="gh-box gh-box-alert">{{svg-jar "info"}}This user account is locked. To sign in, ask this user to perform a password reset on their account.</p>
     {{/if}}
 

@@ -2,8 +2,8 @@ import $ from 'jquery';
 import Ember from 'ember';
 import EmberError from '@ember/error';
 import Service, {inject as service} from '@ember/service';
-import {computed} from '@ember/object';
-import {set} from '@ember/object';
+import classic from 'ember-classic-decorator';
+import {computed, set} from '@ember/object';
 
 export function feature(name, options = {}) {
     let {user, onChange} = options;
@@ -37,27 +37,69 @@ export function feature(name, options = {}) {
     }));
 }
 
-export default Service.extend({
-    store: service(),
-    config: service(),
-    session: service(),
-    settings: service(),
-    notifications: service(),
-    lazyLoader: service(),
+@classic
+export default class FeatureService extends Service {
+    @service store;
+    @service config;
 
-    emailAnalytics: feature('emailAnalytics'),
-    nightShift: feature('nightShift', {user: true, onChange: '_setAdminTheme'}),
-    multipleProducts: feature('multipleProducts'),
-    oauthLogin: feature('oauthLogin'),
-    membersActivity: feature('membersActivity'),
-    cardSettingsPanel: feature('cardSettingsPanel'),
-    urlCache: feature('urlCache'),
-    beforeAfterCard: feature('beforeAfterCard'),
-    tweetGridCard: feature('tweetGridCard'),
+    @service session;
+    @service settings;
 
-    _user: null,
+    @service notifications;
+    @service lazyLoader;
 
-    labs: computed('settings.labs', function () {
+    // features
+    @feature('emailAnalytics')
+        emailAnalytics;
+
+    // user-specific flags
+    @feature('nightShift', {user: true, onChange: '_setAdminTheme'})
+        nightShift;
+
+    // labs flags
+    @feature('multipleProducts')
+        multipleProducts;
+
+    @feature('dashboardV5')
+        dashboardV5;
+
+    @feature('oauthLogin')
+        oauthLogin;
+
+    @feature('membersActivity')
+        membersActivity;
+
+    @feature('urlCache')
+        urlCache;
+
+    @feature('beforeAfterCard')
+        beforeAfterCard;
+    
+    @feature('multipleNewsletters')
+        multipleNewsletters;
+
+    @feature('tweetGridCard')
+        tweetGridCard;
+
+    @feature('improvedOnboarding')
+        improvedOnboarding;
+
+    @feature('tierWelcomePages')
+        tierWelcomePages;
+
+    @feature('tierName')
+        tierName;
+
+    @feature('membersTableStatus')
+        membersTableStatus;
+
+    @feature('selectablePortalLinks')
+        selectablePortalLinks;
+
+    _user = null;
+
+    @computed('settings.labs')
+    get labs() {
         let labs = this.get('settings.labs');
 
         try {
@@ -65,9 +107,10 @@ export default Service.extend({
         } catch (e) {
             return {};
         }
-    }),
+    }
 
-    accessibility: computed('_user.accessibility', function () {
+    @computed('_user.accessibility')
+    get accessibility() {
         let accessibility = this.get('_user.accessibility');
 
         try {
@@ -75,14 +118,14 @@ export default Service.extend({
         } catch (e) {
             return {};
         }
-    }),
+    }
 
     fetch() {
         return this.settings.fetch().then(() => {
             this.set('_user', this.session.user);
             return this._setAdminTheme().then(() => true);
         });
-    },
+    }
 
     update(key, value, options = {}) {
         let serviceProperty = options.user ? 'accessibility' : 'labs';
@@ -119,7 +162,7 @@ export default Service.extend({
 
             return this.get(`${serviceProperty}.${key}`);
         });
-    },
+    }
 
     _setAdminTheme(enabled) {
         let nightShift = enabled;
@@ -135,4 +178,4 @@ export default Service.extend({
             $('link[title=dark]').prop('disabled', true);
         });
     }
-});
+}

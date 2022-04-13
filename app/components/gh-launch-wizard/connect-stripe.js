@@ -1,8 +1,7 @@
 import Component from '@glimmer/component';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
-import {timeout} from 'ember-concurrency';
+import {task, timeout} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 const RETRY_PRODUCT_SAVE_POLL_LENGTH = 1000;
@@ -14,7 +13,6 @@ export default class GhLaunchWizardConnectStripeComponent extends Component {
     @service ghostPaths;
     @service settings;
     @service store;
-    @service settings;
 
     @tracked hasActiveStripeSubscriptions = false;
     @tracked showDisconnectStripeConnectModal = false;
@@ -90,10 +88,7 @@ export default class GhLaunchWizardConnectStripeComponent extends Component {
 
             try {
                 const updatedProduct = yield this.product.save();
-                const existingPortalProducts = this.settings.get('portalProducts');
-                if (!existingPortalProducts?.length) {
-                    this.settings.set('portalProducts', [updatedProduct.id]);
-                }
+
                 yield this.settings.save();
 
                 return updatedProduct;
@@ -166,8 +161,9 @@ export default class GhLaunchWizardConnectStripeComponent extends Component {
         try {
             yield this.settings.save();
 
-            const products = yield this.store.query('product', {include: 'monthly_price,yearly_price'});
+            const products = yield this.store.query('product', {filter: 'type:paid', include: 'monthly_price,yearly_price'});
             this.product = products.firstObject;
+
             if (this.product) {
                 const yearlyDiscount = this.calculateDiscount(5, 50);
                 this.product.set('monthlyPrice', {

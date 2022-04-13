@@ -198,7 +198,8 @@
     background-position: top right;
 }
 
-.gh-dashboard-box .content a {
+.gh-dashboard-box .content a,
+.gh-dashboard-box .footer a {
     color: var(--green);
 }
 
@@ -206,8 +207,14 @@
     color: var(--black);
 }
 
-.gh-dashboard-box .content a:hover {
+.gh-dashboard-box .content a:hover,
+.gh-dashboard-box .footer a:hover {
     color: var(--green-d2);
+}
+
+.gh-dashboard-box .content a.gh-btn,
+.gh-dashboard-box .footer a.gh-btn {
+    color: var(--darkgrey);
 }
 
 .gh-dashboard-box .content .read-time {
@@ -267,12 +274,13 @@ a.gh-dashboard-container {
 
 .gh-dashboard-container.start-contents .gh-dashboard-box a h4 {
     font-size: 1.5rem;
-    margin-bottom: 4px;
+    margin-bottom: 0;
     font-weight: 500;
 }
 
 .gh-dashboard-container.start-contents .gh-dashboard-box a p {
     font-size: 1.3rem;
+    margin-bottom: 0;
 }
 
 /* Charts */
@@ -411,6 +419,7 @@ a.gh-dashboard-container {
     flex-direction: column;
     align-items: flex-end;
     justify-content: flex-end;
+    width: 100%;
 }
 
 .gh-dashboard-chart.nodata {
@@ -434,14 +443,13 @@ a.gh-dashboard-container {
     display: flex;
     justify-content: stretch;
     height: 228px;
-    width: 35.5vw;
+    width: 100%;
     padding-top: 12px;
     margin-right: -10px;
 }
 
 .gh-dashboard-chart-box.small {
     position: relative;
-    width: 14vw;
     min-width: 165px;
     height: 110px;
     padding-top: 0;
@@ -542,107 +550,6 @@ a.gh-dashboard-container {
     max-height: 150px;
 }
 
-/* Top members */
-.gh-dashboard-area.top-members {
-    grid-column: 3 / 4;
-    grid-row: 1 / 3;
-}
-
-.gh-dashboard-area.top-members .gh-dashboard-list {
-    justify-content: space-between;
-}
-
-.gh-dashboard-top-members {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    list-style: none;
-    padding: 0;
-    margin: 8px 0 0;
-    width: 100%;
-}
-
-.gh-dashboard-top-member {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-    width: 100%;
-    justify-content: stretch;
-    margin: 8px 0;
-    padding: 0;
-}
-
-.gh-dashboard-top-member .member-details {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-}
-
-.gh-dashboard-top-member .gh-member-gravatar {
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
-    width: 34px;
-    height: 34px;
-}
-
-.gh-dashboard-top-member .gh-member-initials {
-    width: 34px;
-    height: 34px;
-}
-
-.gh-dashboard-top-member .gh-member-list-avatar {
-    font-size: 1.5rem;
-    font-weight: 500;
-    text-align: center;
-    line-height: 1;
-}
-
-.gh-dashboard-top-member .name,
-.gh-dashboard-top-member .email {
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--black);
-}
-
-.gh-dashboard-top-member .open-rate {
-    white-space: nowrap;
-    margin-left: 12px;
-    color: var(--midgrey);
-    font-size: 1.3rem;
-    text-align: right;
-    line-height: 1.35em;
-}
-
-.gh-dashboard-top-member .open-rate span {
-    color: var(--midlightgrey);
-    font-size: 1.2rem;
-}
-
-.gh-dashboard-top-members-footer {
-    display: flex;
-    justify-content: flex-end;
-    border-top: 1px solid var(--whitegrey-d2);
-    padding-top: 12px;
-    margin-bottom: -4px;
-    margin-top: 8px;
-}
-
-.gh-dashboard-top-members-footer a {
-    display: flex;
-    align-items: center;
-    color: var(--black);
-    font-weight: 500;
-}
-
-.gh-dashboard-top-members-footer a svg {
-    width: 12px;
-    height: 12px;
-    margin-left: 4px;
-}
-
-.gh-dashboard-top-members-footer a svg path {
-    fill: var(--black);
-}
-
 .gh-dashboard-header-container {
     display: flex;
     align-items: center;
@@ -656,66 +563,91 @@ a.gh-dashboard-container {
 }
 
 /* Activity feed */
-.gh-dashboard-area.activity-feed {
+.gh-dashboard-area.activity {
     grid-column: 3 / 4;
     grid-row: 3 / 4;
     padding: 0;
     margin: 0;
 }
 
-.gh-dashboard-box.activity-feed .gh-dashboard-header {
-    border-bottom: 1px solid var(--whitegrey-d2);
-    padding-bottom: 14px;
-}
-
-.gh-dashboard-activity-feed {
+.gh-dashboard-activity-list {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     list-style: none;
     padding: 0;
-    margin: 4px 0 0;
+    margin: 0;
     width: 100%;
 }
 
-.gh-dashboard-activity-feed li {
+.gh-dashboard-activity-item {
     display: flex;
     align-items: baseline;
     flex-grow: 1;
     width: 100%;
     justify-content: space-between;
-    margin: 8px 0;
-    padding: 0;
+    margin: 0 0 12px;
+    padding: 0 0 12px;
+    color: var(--darkgrey);
+    border-bottom: 1px solid var(--whitegrey);
 }
 
-.gh-dashboard-activity-feed .activity {
+.gh-dashboard-box.activity .gh-dashboard-header-container {
+    margin: 0 0 12px;
+}
+
+.gh-dashboard-activity-container {
     display: flex;
-    align-items: baseline;
-    margin-right: 32px;
-    color: var(--midgrey);
-    line-height: 1.5em;
-    font-size: 1.3rem;
+    flex-direction: row;
+    align-items: center;
 }
 
-.gh-dashboard-activity-feed .member {
-    font-weight: 500;
-    color: var(--black);
-    font-size: 1.4rem;
+.gh-dashboard-activity-detail {
+    display: flex;
+    flex-direction: column;
 }
 
-.gh-dashboard-activity-feed .activity svg {
-    width: 12px;
-    height: 12px;
-    margin-right: 8px;
-    margin-top: 1px;
+.gh-dashboard-activity-container svg {
+    width: 24px;
+    height: 24px;
+    margin: 0 1rem 1rem 0;
 }
 
-.gh-dashboard-activity-feed .time {
+.gh-dashboard-activity-event {
+    display: inline-block;
+    text-transform: lowercase;
+}
+
+.gh-dashboard-activity-event:first-letter {
+    text-transform: uppercase;
+}
+
+.gh-dashboard-activity-time {
     white-space: nowrap;
     margin-left: 12px;
     color: var(--midgrey);
     font-size: 1.3rem;
 }
+
+.gh-dashboard-box.activity .footer {
+    margin-bottom: -12px;
+}
+
+.gh-dashboard-box.activity a .gh-dashboard-activity-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--black);
+    margin: 0 0 2px;
+}
+
+.gh-dashboard-box.activity a .gh-dashboard-activity-event {
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--middarkgrey);
+}
+
+
+/* No data list */
 
 .gh-no-data-list {
     display: flex;
@@ -1026,4 +958,17 @@ a.gh-dashboard-container {
     .gh-dashboard-summary.small .data {
         font-size: 2.0rem;
     }
+}
+
+/* panel collapse animation */
+.gh-dashboard-area-leave {
+    opacity: 100;
+    max-height: 350px;
+}
+.gh-dashboard-area-leave-active {
+    transition: all ease-in-out 0.25s;
+}
+.gh-dashboard-area-leave-to {
+    opacity: 0;
+    max-height: 0;
 }

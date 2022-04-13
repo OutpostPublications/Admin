@@ -1,7 +1,8 @@
 import Controller from '@ember/controller';
+import LinkOfferModal from '../components/modals/offers/link';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 const TYPES = [{
@@ -31,7 +32,11 @@ export default class MembersController extends Controller {
 
     get filteredOffers() {
         return this.offers.filter((offer) => {
-            return offer.status === this.type;
+            const product = this.products.find((p) => {
+                return p.id === offer.tier.id;
+            });
+            const price = offer.cadence === 'month' ? product.monthlyPrice : product.yearlyPrice;
+            return offer.status === this.type && !!price;
         }).map((offer) => {
             const product = this.products.find((p) => {
                 return p.id === offer.tier.id;
@@ -61,16 +66,16 @@ export default class MembersController extends Controller {
 
     @action
     openLinkDialog(offer) {
-        this.advancedModal = this.modals.open('modals/offers/link', {
+        this.advancedModal = this.modals.open(LinkOfferModal, {
             offer: offer
-        }, {
-            className: 'fullscreen-modal-action fullscreen-modal-wide'
         });
     }
 
     @task({restartable: true})
     *fetchOffersTask() {
-        this.products = yield this.store.query('product', {include: 'monthly_price,yearly_price'});
+        this.products = yield this.store.query('product', {
+            filter: 'type:paid', include: 'monthly_price,yearly_price'
+        });
         this.offers = yield this.store.query('offer', {limit: 'all'});
         return this.offers;
     }

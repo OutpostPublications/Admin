@@ -1,5 +1,5 @@
-import Mirage from 'ember-cli-mirage';
 import ctrlOrCmd from 'ghost-admin/utils/ctrl-or-cmd';
+import {Response} from 'miragejs';
 import {authenticateSession, invalidateSession} from 'ember-simple-auth/test-support';
 import {beforeEach, describe, it} from 'mocha';
 import {blur, click, currentURL, fillIn, find, findAll, triggerEvent} from '@ember/test-helpers';
@@ -19,34 +19,34 @@ describe('Acceptance: Settings - Integrations - Slack', function () {
         expect(currentURL(), 'currentURL').to.equal('/signin');
     });
 
-    it('redirects to staff page when authenticated as contributor', async function () {
+    it('redirects to home page when authenticated as contributor', async function () {
         let role = this.server.create('role', {name: 'Contributor'});
         this.server.create('user', {roles: [role], slug: 'test-user'});
 
         await authenticateSession();
         await visit('/settings/integrations/slack');
 
-        expect(currentURL(), 'currentURL').to.equal('/settings/staff/test-user');
+        expect(currentURL(), 'currentURL').to.equal('/posts');
     });
 
-    it('redirects to staff page when authenticated as author', async function () {
+    it('redirects to home page when authenticated as author', async function () {
         let role = this.server.create('role', {name: 'Author'});
         this.server.create('user', {roles: [role], slug: 'test-user'});
 
         await authenticateSession();
         await visit('/settings/integrations/slack');
 
-        expect(currentURL(), 'currentURL').to.equal('/settings/staff/test-user');
+        expect(currentURL(), 'currentURL').to.equal('/site');
     });
 
-    it('redirects to staff page when authenticated as editor', async function () {
+    it('redirects to home page when authenticated as editor', async function () {
         let role = this.server.create('role', {name: 'Editor'});
         this.server.create('user', {roles: [role], slug: 'test-user'});
 
         await authenticateSession();
         await visit('/settings/integrations/slack');
 
-        expect(currentURL(), 'currentURL').to.equal('/settings/staff');
+        expect(currentURL(), 'currentURL').to.equal('/site');
     });
 
     describe('when logged in', function () {
@@ -95,7 +95,7 @@ describe('Acceptance: Settings - Integrations - Slack', function () {
                 .to.not.exist;
 
             this.server.put('/settings/', function () {
-                return new Mirage.Response(422, {}, {
+                return new Response(422, {}, {
                     errors: [
                         {
                             type: 'ValidationError',

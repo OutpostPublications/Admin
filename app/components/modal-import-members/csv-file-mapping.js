@@ -6,13 +6,9 @@ import {isNone} from '@ember/utils';
 import {tracked} from '@glimmer/tracking';
 
 export default class CsvFileMapping extends Component {
-    @tracked
-    error = null;
-
-    @tracked
-    fileData = null;
-
-    mappingResult = {};
+    @tracked error = null;
+    @tracked fileData = null;
+    @tracked labels = null;
 
     constructor(...args) {
         super(...args);

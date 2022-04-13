@@ -3,7 +3,7 @@ import ModalBase from 'ghost-admin/components/modal-base';
 import classic from 'ember-classic-decorator';
 import {currencies} from 'ghost-admin/utils/currency';
 import {isEmpty} from '@ember/utils';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 // TODO: update modals to work fully with Glimmer components
@@ -37,11 +37,11 @@ export default class ModalProductPrice extends ModalBase {
         this.allCurrencies = [
             {
                 groupName: '—',
-                options: this.get('topCurrencies')
+                options: this.topCurrencies
             },
             {
                 groupName: '—',
-                options: this.get('currencies')
+                options: this.currencies
             }
         ];
         this.currencyVal = this.price.currency || 'usd';
@@ -139,5 +139,5 @@ export default class ModalProductPrice extends ModalBase {
         closeModal() {
             this.close();
         }
-    }
+    };
 }

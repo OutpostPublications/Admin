@@ -1,21 +1,23 @@
-import Service from '@ember/service';
-import {inject as service} from '@ember/service';
+import Service, {inject as service} from '@ember/service';
+import classic from 'ember-classic-decorator';
 
-export default Service.extend({
-    router: service(),
-    config: service(),
-    ghostPaths: service(),
-    store: service(),
+@classic
+export default class BillingService extends Service {
+    @service router;
+    @service config;
 
-    billingRouteRoot: '#/pro',
-    billingWindowOpen: false,
-    subscription: null,
-    previousRoute: null,
-    action: null,
-    ownerUser: null,
+    @service ghostPaths;
+    @service store;
+
+    billingRouteRoot = '#/pro';
+    billingWindowOpen = false;
+    subscription = null;
+    previousRoute = null;
+    action = null;
+    ownerUser = null;
 
     init() {
-        this._super(...arguments);
+        super.init(...arguments);
 
         if (this.config.get('hostSettings.billing.url')) {
             window.addEventListener('message', (event) => {
@@ -24,11 +26,11 @@ export default Service.extend({
                 }
             });
         }
-    },
+    }
 
     handleRouteChangeInIframe(destinationRoute) {
-        if (this.get('billingWindowOpen')) {
-            let billingRoute = this.get('billingRouteRoot');
+        if (this.billingWindowOpen) {
+            let billingRoute = this.billingRouteRoot;
 
             if (destinationRoute !== '/') {
                 billingRoute += destinationRoute;
@@ -38,7 +40,7 @@ export default Service.extend({
                 window.history.replaceState(window.history.state, '', billingRoute);
             }
         }
-    },
+    }
 
     getIframeURL() {
         // initiate getting owner user in the background
@@ -46,8 +48,8 @@ export default Service.extend({
 
         let url = this.config.get('hostSettings.billing.url');
 
-        if (window.location.hash && window.location.hash.includes(this.get('billingRouteRoot'))) {
-            let destinationRoute = window.location.hash.replace(this.get('billingRouteRoot'), '');
+        if (window.location.hash && window.location.hash.includes(this.billingRouteRoot)) {
+            let destinationRoute = window.location.hash.replace(this.billingRouteRoot, '');
 
             if (destinationRoute) {
                 url += destinationRoute;
@@ -55,10 +57,10 @@ export default Service.extend({
         }
 
         return url;
-    },
+    }
 
     async getOwnerUser() {
-        if (!this.get('ownerUser')) {
+        if (!this.ownerUser) {
             // Try to receive the owner user from the store
             let user = this.store.peekAll('user').findBy('isOwnerOnly', true);
 
@@ -69,31 +71,31 @@ export default Service.extend({
             }
             this.set('ownerUser', user);
         }
-        return this.get('ownerUser');
-    },
+        return this.ownerUser;
+    }
 
     // Sends a route update to a child route in the BMA, because we can't control
     // navigating to it otherwise
     sendRouteUpdate() {
-        const action = this.get('action');
+        const action = this.action;
 
         if (action) {
             if (action === 'checkout') {
                 this.getBillingIframe().contentWindow.postMessage({
                     query: 'routeUpdate',
-                    response: this.get('checkoutRoute')
+                    response: this.checkoutRoute
                 }, '*');
             }
 
             this.set('action', null);
         }
-    },
+    }
 
     // Controls billing window modal visibility and sync of the URL visible in browser
     // and the URL opened on the iframe. It is responsible to non user triggered iframe opening,
     // for example: by entering "/pro" route in the URL or using history navigation (back and forward)
     toggleProWindow(value) {
-        if (this.get('billingWindowOpen') && value && !this.get('action')) {
+        if (this.billingWindowOpen && value && !this.action) {
             // don't attempt to open again
             return;
         }
@@ -101,7 +103,7 @@ export default Service.extend({
         this.sendRouteUpdate();
 
         this.set('billingWindowOpen', value);
-    },
+    }
 
     // Controls navigation to billing window modal which is triggered from the application UI.
     // For example: pressing "View Billing" link in navigation menu. It's main side effect is
@@ -111,7 +113,7 @@ export default Service.extend({
         // initiate getting owner user in the background
         this.getOwnerUser();
 
-        if (this.get('billingWindowOpen')) {
+        if (this.billingWindowOpen) {
             // don't attempt to open again
             return;
         }
@@ -125,9 +127,9 @@ export default Service.extend({
         this.sendRouteUpdate();
 
         this.router.transitionTo(childRoute || '/pro');
-    },
+    }
 
     getBillingIframe() {
         return document.getElementById('billing-frame');
     }
-});
+}

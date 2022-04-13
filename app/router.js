@@ -10,11 +10,8 @@ const Router = EmberRouter.extend({
 Router.map(function () {
     this.route('home', {path: '/'});
 
-    this.route('setup', function () {
-        this.route('one');
-        this.route('two');
-        this.route('three');
-    });
+    this.route('setup');
+    this.route('setup.done', {path: '/setup/done'});
 
     this.route('signin');
     this.route('signout');
@@ -47,6 +44,11 @@ Router.map(function () {
     this.route('settings.membership', {path: '/settings/members'});
     this.route('settings.members-email', {path: '/settings/members-email'});
     this.route('settings.code-injection', {path: '/settings/code-injection'});
+
+    this.route('settings.members-email-labs', {path: '/settings/members-email-labs'}, function () {
+        this.route('new-newsletter', {path: '/newsletters/new'});
+        this.route('edit-newsletter', {path: '/newsletters/:newsletter_id'});
+    });
 
     this.route('settings.design', {path: '/settings/design'}, function () {
         this.route('change-theme', function () {
@@ -82,6 +84,7 @@ Router.map(function () {
     });
     this.route('member.new', {path: '/members/new'});
     this.route('member', {path: '/members/:member_id'});
+    this.route('members-activity');
 
     this.route('offers');
 

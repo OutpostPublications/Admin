@@ -1,8 +1,7 @@
 import moment from 'moment';
-import wait from 'ember-test-helpers/wait';
 import {authenticateSession, invalidateSession} from 'ember-simple-auth/test-support';
 import {beforeEach, describe, it} from 'mocha';
-import {blur, click, currentURL, fillIn, find, findAll} from '@ember/test-helpers';
+import {blur, click, currentURL, fillIn, find, findAll, settled} from '@ember/test-helpers';
 import {expect} from 'chai';
 import {setupApplicationTest} from 'ember-mocha';
 import {setupMirage} from 'ember-cli-mirage/test-support';
@@ -43,13 +42,12 @@ describe('Acceptance: Members', function () {
         });
 
         it('it renders, can be navigated, can edit member', async function () {
-            let member1 = this.server.create('member', {createdAt: moment.utc().subtract(1, 'day').valueOf()});
-            this.server.create('member', {createdAt: moment.utc().subtract(2, 'day').valueOf()});
+            let member1 = this.server.create('member', {createdAt: moment.utc().subtract(1, 'day').format('YYYY-MM-DD HH:mm:ss')});
+            this.server.create('member', {createdAt: moment.utc().subtract(2, 'day').format('YYYY-MM-DD HH:mm:ss')});
 
             await visit('/members');
 
-            // second wait is needed for the vertical-collection to settle
-            await wait();
+            await settled();
 
             // lands on correct page
             expect(currentURL(), 'currentURL').to.equal('/members');
@@ -65,10 +63,14 @@ describe('Acceptance: Members', function () {
             expect(member.querySelector('.gh-members-list-name').textContent, 'member list item title')
                 .to.equal(member1.name);
 
+            // it does not add ?include=email_recipients
+            const membersRequests = this.server.pretender.handledRequests.filter(r => r.url.match(/\/members\/(\?|$)/));
+            expect(membersRequests[0].url).to.not.have.string('email_recipients');
+
             await visit(`/members/${member1.id}`);
 
             // // second wait is needed for the member details to settle
-            await wait();
+            await settled();
 
             // it shows selected member form
             expect(find('[data-test-input="member-name"]').value, 'loads correct member into form')
@@ -89,19 +91,16 @@ describe('Acceptance: Members', function () {
 
             await click('[data-test-link="members-back"]');
 
-            await wait();
-
             // lands on correct page
             expect(currentURL(), 'currentURL').to.equal('/members');
         });
 
         it('can create a new member', async function () {
-            this.server.create('member', {createdAt: moment.utc().subtract(1, 'day').valueOf()});
+            this.server.create('member', {createdAt: moment.utc().subtract(1, 'day').format('YYYY-MM-DD HH:mm:ss')});
 
             await visit('/members');
 
-            // second wait is needed for the vertical-collection to settle
-            await wait();
+            await settled();
 
             // lands on correct page
             expect(currentURL(), 'currentURL').to.equal('/members');
@@ -137,8 +136,6 @@ describe('Acceptance: Members', function () {
 
             await click('[data-test-button="save"]');
 
-            await wait();
-
             expect(find('[data-test-input="member-name"]').value, 'name has been preserved')
                 .to.equal('New Name');
 
@@ -164,7 +161,8 @@ describe('Acceptance: Members', function () {
 
             // a filter is needed for the delete-selected button to show
             await click('[data-test-button="members-filter-actions"]');
-            await click('.gh-member-label-input-labs input');
+            await fillIn('[data-test-members-filter="0"] [data-test-select="members-filter"]', 'label');
+            await click('.gh-member-label-input input');
             await click(`[data-test-label-filter="${label.name}"]`);
             await click(`[data-test-button="members-apply-filter"]`);
 

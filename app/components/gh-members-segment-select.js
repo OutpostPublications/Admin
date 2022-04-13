@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 export default class GhMembersSegmentSelect extends Component {
@@ -73,31 +73,10 @@ export default class GhMembersSegmentSelect extends Component {
             });
         }
 
-        // fetch all labels w̶i̶t̶h̶ c̶o̶u̶n̶t̶s̶
-        // TODO: add `include: 'count.members` to query once API is fixed
-        const labels = yield this.store.query('label', {limit: 'all'});
-
-        if (labels.length > 0 && !this.args.hideLabels) {
-            const labelsGroup = {
-                groupName: 'Labels',
-                options: []
-            };
-
-            labels.forEach((label) => {
-                labelsGroup.options.push({
-                    name: label.name,
-                    segment: `label:${label.slug}`,
-                    count: label.count?.members,
-                    class: 'segment-label'
-                });
-            });
-
-            options.push(labelsGroup);
-        }
         if (this.feature.get('multipleProducts')) {
             // fetch all products w̶i̶t̶h̶ c̶o̶u̶n̶t̶s̶
             // TODO: add `include: 'count.members` to query once API supports
-            const products = yield this.store.query('product', {limit: 'all', include: 'monthly_price,yearly_price,benefits'});
+            const products = yield this.store.query('product', {filter: 'type:paid', limit: 'all', include: 'monthly_price,yearly_price,benefits'});
 
             if (products.length > 0) {
                 const productsGroup = {
@@ -119,6 +98,28 @@ export default class GhMembersSegmentSelect extends Component {
                     this.args.onChange?.(productsGroup.options[0].segment);
                 }
             }
+        }
+
+        // fetch all labels w̶i̶t̶h̶ c̶o̶u̶n̶t̶s̶
+        // TODO: add `include: 'count.members` to query once API is fixed
+        const labels = yield this.store.query('label', {limit: 'all'});
+
+        if (labels.length > 0 && !this.args.hideLabels) {
+            const labelsGroup = {
+                groupName: 'Labels',
+                options: []
+            };
+
+            labels.forEach((label) => {
+                labelsGroup.options.push({
+                    name: label.name,
+                    segment: `label:${label.slug}`,
+                    count: label.count?.members,
+                    class: 'segment-label'
+                });
+            });
+
+            options.push(labelsGroup);
         }
 
         this._options = options;

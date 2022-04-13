@@ -1,96 +1,116 @@
 import Component from '@ember/component';
+import SearchModal from '../modals/search';
 import ShortcutsMixin from 'ghost-admin/mixins/shortcuts';
+import classic from 'ember-classic-decorator';
 import ctrlOrCmd from 'ghost-admin/utils/ctrl-or-cmd';
-import {and, equal, match, or} from '@ember/object/computed';
-import {computed} from '@ember/object';
+import {action} from '@ember/object';
+import {and, equal, match, or, reads} from '@ember/object/computed';
 import {getOwner} from '@ember/application';
 import {htmlSafe} from '@ember/template';
 import {inject as service} from '@ember/service';
+import {tagName} from '@ember-decorators/component';
 import {task} from 'ember-concurrency';
 
-export default Component.extend(ShortcutsMixin, {
-    billing: service(),
-    config: service(),
-    customViews: service(),
-    feature: service(),
-    ghostPaths: service(),
-    modals: service(),
-    navigation: service(),
-    router: service(),
-    session: service(),
-    ui: service(),
-    whatsNew: service(),
-    membersStats: service(),
-    settings: service(),
+@classic
+@tagName('')
+export default class Main extends Component.extend(ShortcutsMixin) {
+    @service billing;
+    @service config;
+    @service customViews;
+    @service feature;
+    @service ghostPaths;
+    @service modals;
+    @service navigation;
+    @service router;
+    @service session;
+    @service ui;
+    @service whatsNew;
+    @service membersStats;
+    @service settings;
 
-    tagName: '',
+    iconStyle = '';
+    iconClass = '';
+    memberCountLoading = true;
+    memberCount = 0;
+    shortcuts = null;
 
-    iconStyle: '',
-    iconClass: '',
-    memberCountLoading: true,
-    memberCount: 0,
-
-    shortcuts: null,
-
-    isIntegrationRoute: match('router.currentRouteName', /^settings\.integration/),
+    @match('router.currentRouteName', /^settings\.integration/)
+        isIntegrationRoute;
 
     // HACK: {{link-to}} should be doing this automatically but there appears to
     // be a bug in Ember that's preventing it from working immediately after login
-    isOnSite: equal('router.currentRouteName', 'site'),
+    @equal('router.currentRouteName', 'site')
+        isOnSite;
 
-    showTagsNavigation: or('session.user.isAdmin', 'session.user.isEditor'),
-    showMenuExtension: and('config.clientExtensions.menu', 'session.user.isOwnerOnly'),
-    showScriptExtension: and('config.clientExtensions.script', 'session.user.isOwnerOnly'),
-    showBilling: computed.reads('config.hostSettings.billing.enabled'),
-    isStripeConnected: computed.reads('settings.stripeConnectAccountId'),
+    @or('session.user.isAdmin', 'session.user.isEditor')
+        showTagsNavigation;
+
+    @and('config.clientExtensions.menu', 'session.user.isOwnerOnly')
+        showMenuExtension;
+
+    @and('config.clientExtensions.script', 'session.user.isOwnerOnly')
+        showScriptExtension;
+
+    @reads('config.hostSettings.billing.enabled')
+        showBilling;
+
+    @reads('settings.stripeConnectAccountId')
+        isStripeConnected;
 
     init() {
-        this._super(...arguments);
+        super.init(...arguments);
 
         let shortcuts = {};
 
         shortcuts[`${ctrlOrCmd}+k`] = {action: 'openSearchModal'};
         this.shortcuts = shortcuts;
-    },
+    }
 
     // the menu has a rendering issue (#8307) when the the world is reloaded
     // during an import which we have worked around by not binding the icon
     // style directly. However we still need to keep track of changing icons
     // so that we can refresh when a new icon is uploaded
     didReceiveAttrs() {
-        this._super(...arguments);
+        super.didReceiveAttrs(...arguments);
         this._setIconStyle();
         this._loadMemberCountsTask.perform();
-    },
+    }
 
     didInsertElement() {
-        this._super(...arguments);
+        super.didInsertElement(...arguments);
         this.registerShortcuts();
-    },
+    }
 
     willDestroyElement() {
         this.removeShortcuts();
-        this._super(...arguments);
-    },
+        super.willDestroyElement(...arguments);
+    }
 
-    actions: {
-        transitionToOrRefreshSite() {
-            let {currentRouteName} = this.router;
-            if (currentRouteName === 'site') {
-                getOwner(this).lookup(`route:${currentRouteName}`).refresh();
+    @action
+    transitionToOrRefreshSite() {
+        let {currentRouteName} = this.router;
+        if (currentRouteName === 'site') {
+            getOwner(this).lookup(`route:${currentRouteName}`).refresh();
+        } else {
+            if (this.session.user.isContributor) {
+                this.router.transitionTo('posts');
             } else {
                 this.router.transitionTo('site');
             }
-        },
-        openSearchModal() {
-            return this.modals.open('modals/search');
-        },
-        toggleBillingModal() {
-            this.billing.openBillingWindow(this.router.currentURL);
         }
-    },
+    }
 
-    _loadMemberCountsTask: task(function* () {
+    @action
+    openSearchModal() {
+        return this.modals.open(SearchModal);
+    }
+
+    @action
+    toggleBillingModal() {
+        this.billing.openBillingWindow(this.router.currentURL);
+    }
+
+    @task(function* () {
         try {
             this.set('memberCountLoading', true);
             const stats = yield this.membersStats.fetchCounts();
@@ -103,7 +123,8 @@ export default Component.extend(ShortcutsMixin, {
         } catch (e) {
             return false;
         }
-    }),
+    })
+        _loadMemberCountsTask;
 
     _setIconStyle() {
         let icon = this.icon;
@@ -125,5 +146,4 @@ export default Component.extend(ShortcutsMixin, {
         this.set('iconStyle', htmlSafe(`background-image: url(${iconUrl})`));
         this.set('iconClass', 'gh-nav-logo-default');
     }
-
-});
+}

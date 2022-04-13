@@ -1,7 +1,7 @@
-import Mirage from 'ember-cli-mirage';
 import ctrlOrCmd from 'ghost-admin/utils/ctrl-or-cmd';
 import moment from 'moment';
 import sinon from 'sinon';
+import {Response} from 'miragejs';
 import {authenticateSession, invalidateSession} from 'ember-simple-auth/test-support';
 import {beforeEach, describe, it} from 'mocha';
 import {blur, click, currentRouteName, currentURL, fillIn, find, findAll, triggerEvent} from '@ember/test-helpers';
@@ -140,7 +140,8 @@ describe('Acceptance: Editor', function () {
             // should error, if the publish time is in the future
             // NOTE: date must be selected first, changing the time first will save
             // with the new time
-            await datepickerSelect('[data-test-date-time-picker-datepicker]', moment.tz('Etc/UTC').toDate());
+            await fillIn('[data-test-date-time-picker-datepicker] input', moment.tz('Etc/UTC').add(1, 'day').format('YYYY-MM-DD'));
+            await blur('[data-test-date-time-picker-datepicker] input');
             await fillIn('[data-test-date-time-picker-time-input]', futureTime.format('HH:mm'));
             await blur('[data-test-date-time-picker-time-input]');
 
@@ -210,8 +211,6 @@ describe('Acceptance: Editor', function () {
 
             // Publish the post and re-open publish menu
             await click('[data-test-publishmenu-save]');
-            await click('[data-test-button="confirm-publish"]');
-            await click('[data-test-publishmenu-trigger]');
 
             expect(
                 find('[data-test-publishmenu-save]').textContent.trim(),
@@ -344,8 +343,6 @@ describe('Acceptance: Editor', function () {
             let newFutureTime = moment.tz('Pacific/Kwajalein');
             await datepickerSelect('[data-test-publishmenu-draft] [data-test-date-time-picker-datepicker]', new Date(newFutureTime.format().replace(/\+.*$/, '')));
             await click('[data-test-publishmenu-save]');
-            await click('[data-test-button="confirm-schedule"]');
-            await click('[data-test-publishmenu-trigger]');
 
             expect(
                 find('[data-test-publishmenu-save]').textContent.trim(),
@@ -436,7 +433,7 @@ describe('Acceptance: Editor', function () {
 
         it('handles validation errors when scheduling', async function () {
             this.server.put('/posts/:id/', function () {
-                return new Mirage.Response(422, {}, {
+                return new Response(422, {}, {
                     errors: [{
                         type: 'ValidationError',
                         message: 'Error test'
@@ -456,7 +453,6 @@ describe('Acceptance: Editor', function () {
             await blur('[data-test-publishmenu-draft] [data-test-date-time-picker-time-input]');
 
             await click('[data-test-publishmenu-save]');
-            await click('[data-test-button="confirm-schedule"]');
 
             expect(
                 findAll('.gh-alert').length,
@@ -481,7 +477,6 @@ describe('Acceptance: Editor', function () {
             await fillIn('[data-test-editor-title-input]', Array(260).join('a'));
             await click('[data-test-publishmenu-trigger]');
             await click('[data-test-publishmenu-save]');
-            await click('[data-test-button="confirm-publish"]');
 
             expect(
                 findAll('.gh-alert').length,
@@ -837,6 +832,81 @@ describe('Acceptance: Editor', function () {
             let [lastRequest] = this.server.pretender.handledRequests.slice(-1);
             let body = JSON.parse(lastRequest.requestBody);
             expect(body.posts[0].title).to.equal('CMD-S Test');
+        });
+    });
+
+    describe('regressions', function () {
+        let user;
+
+        beforeEach(async function () {
+            const role = this.server.create('role', {name: 'Administrator'});
+            user = this.server.create('user', {roles: [role]});
+
+            return await authenticateSession();
+        });
+
+        // BUG: opening the publish menu and selecting a scheduled time then
+        // closing prevents scheduling with a "Must be in the past" error
+        // when re-opening the menu
+        // https://github.com/TryGhost/Team/issues/1399
+        it('can close publish menu after selecting schedule then re-open, schedule, and publish without error', async function () {
+            const post = this.server.create('post', {status: 'draft', authors: [user]});
+
+            await visit(`/editor/post/${post.id}`);
+            await click('[data-test-publishmenu-trigger]');
+            await click('[data-test-publishmenu-scheduled-option]');
+            await click('[data-test-publishmenu-cancel]');
+            await click('[data-test-publishmenu-trigger]');
+            await click('[data-test-publishmenu-scheduled-option]');
+            await click('[data-test-publishmenu-save]');
+
+            expect(post.attrs.status).to.equal('scheduled');
+        });
+
+        // BUG: re-scheduling a send-only post unexpectedly switched to publish+send
+        // https://github.com/TryGhost/Ghost/issues/14354
+        it('can re-schedule an email-only post', async function () {
+            // enable email functionality
+            this.server.db.settings.find({key: 'mailgun_api_key'})
+                ? this.server.db.settings.update({key: 'mailgun_api_key'}, {value: 'MAILGUN_API_KEY'})
+                : this.server.create('setting', {key: 'mailgun_api_key', value: 'MAILGUN_API_KEY', group: 'email'});
+
+            this.server.db.settings.find({key: 'mailgun_domain'})
+                ? this.server.db.settings.update({key: 'mailgun_domain'}, {value: 'MAILGUN_DOMAIN'})
+                : this.server.create('setting', {key: 'mailgun_domain', value: 'MAILGUN_DOMAIN', group: 'email'});
+
+            this.server.db.settings.find({key: 'mailgun_base_url'})
+                ? this.server.db.settings.update({key: 'mailgun_base_url'}, {value: 'MAILGUN_BASE_URL'})
+                : this.server.create('setting', {key: 'mailgun_base_url', value: 'MAILGUN_BASE_URL', group: 'email'});
+
+            this.server.db.settings.find({key: 'editor_default_email_recipients'})
+                ? this.server.db.settings.update({key: 'editor_default_email_recipients'}, {value: 'visibility'})
+                : this.server.create('setting', {key: 'editor_default_email_recipients', value: 'visibility', group: 'editor'});
+
+            this.server.createList('member', 4);
+
+            const post = this.server.create('post', {status: 'draft', authors: [user]});
+
+            const scheduledTime = moment().add(2, 'hours');
+
+            await visit(`/editor/post/${post.id}`);
+            await click('[data-test-publishmenu-trigger]');
+            await selectChoose('[data-test-distribution-action-select]', 'send');
+            await click('[data-test-publishmenu-scheduled-option]');
+            await datepickerSelect('[data-test-publishmenu-draft] [data-test-date-time-picker-datepicker]', new Date(scheduledTime.format().replace(/\+.*$/, '')));
+            await click('[data-test-publishmenu-save]');
+            await click('[data-test-button="confirm-schedule"]');
+
+            expect(post.attrs.emailOnly).to.be.true;
+
+            await click('[data-test-publishmenu-trigger]');
+
+            expect(find('[data-test-publishmenu-header]')).to.contain.text('Will be sent');
+
+            await datepickerSelect('[data-test-publishmenu-scheduled] [data-test-date-time-picker-datepicker]', new Date(scheduledTime.add(1, 'day').format().replace(/\+.*$/, '')));
+            await click('[data-test-publishmenu-save]');
+
+            expect(post.attrs.emailOnly).to.be.true;
         });
     });
 });

@@ -1,9 +1,9 @@
 import Component from '@glimmer/component';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 
-export default class ConfirmDeleteThemeComponent extends Component {
+export default class ConfirmDeleteThemeModal extends Component {
     @service ghostPaths;
     @service notifications;
     @service utils;

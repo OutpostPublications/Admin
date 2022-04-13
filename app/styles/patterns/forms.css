@@ -57,6 +57,12 @@ input[type=number] {
     font-weight: 400;
 }
 
+::-moz-placeholder {
+    color: var(--midlightgrey);
+    font-weight: 400;
+    opacity: 1;
+}
+
 .error .response {
     color: var(--red);
 }
@@ -93,7 +99,7 @@ input[type=number] {
 
 .form-group p {
     margin: 4px 0 0 0;
-    color: var(--midgrey-d2);
+    color: var(--midgrey-d1);
     font-size: 1.25rem;
     font-weight: 400;
 }

@@ -1,37 +1,24 @@
-import EPMModalsService from 'ember-promise-modals/services/modals';
+import EPMModalsService from '@tryghost/ember-promise-modals/services/modals';
 import {bind} from '@ember/runloop';
 import {inject as service} from '@ember/service';
 
 export default class ModalsService extends EPMModalsService {
     @service dropdown;
-    @service themeManagement;
 
     DEFAULT_OPTIONS = {
         className: 'fullscreen-modal-action fullscreen-modal-wide'
-    }
-
-    MODAL_OPTIONS = {
-        'modals/design/upload-theme': {
-            beforeClose: () => {
-                if (this.themeManagement.isUploading) {
-                    return false;
-                }
-            }
-        },
-        'modals/design/view-theme': {
-            className: 'fullscreen-modal-total-overlay',
-            omitBackdrop: true
-        }
-    }
+    };
 
     // we manually close modals on backdrop clicks and escape rather than letting focus-trap
     // handle it so we can intercept/abort closing for things like unsaved change confirmations
-    allowOutsideClick = true;
-    clickOutsideDeactivates = false;
-    escapeDeactivates = false;
+    focusTrapOptions = {
+        allowOutsideClick: true,
+        clickOutsideDeactivates: false,
+        escapeDeactivates: false
+    };
 
     open(modal, data, options) {
-        const mergedOptions = Object.assign({}, this.DEFAULT_OPTIONS, this.MODAL_OPTIONS[modal], options);
+        const mergedOptions = Object.assign({}, this.DEFAULT_OPTIONS, modal.modalOptions, options);
         return super.open(modal, data, mergedOptions);
     }
 
@@ -70,7 +57,7 @@ export default class ModalsService extends EPMModalsService {
         let shouldClose = true;
 
         for (const elem of (event.path || event.composedPath())) {
-            if (elem.matches?.('.modal-content, .fullscreen-modal-total-overlay, .ember-basic-dropdown-content')) {
+            if (elem.matches?.('.modal-content, .fullscreen-modal-total-overlay, .ember-basic-dropdown-content, a[download]')) {
                 shouldClose = false;
                 break;
             }

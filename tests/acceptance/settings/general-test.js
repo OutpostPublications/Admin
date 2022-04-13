@@ -18,34 +18,34 @@ describe('Acceptance: Settings - General', function () {
         expect(currentURL(), 'currentURL').to.equal('/signin');
     });
 
-    it('redirects to staff page when authenticated as contributor', async function () {
+    it('redirects to home page when authenticated as contributor', async function () {
         let role = this.server.create('role', {name: 'Contributor'});
         this.server.create('user', {roles: [role], slug: 'test-user'});
 
         await authenticateSession();
         await visit('/settings/general');
 
-        expect(currentURL(), 'currentURL').to.equal('/settings/staff/test-user');
+        expect(currentURL(), 'currentURL').to.equal('/posts');
     });
 
-    it('redirects to staff page when authenticated as author', async function () {
+    it('redirects to home page when authenticated as author', async function () {
         let role = this.server.create('role', {name: 'Author'});
         this.server.create('user', {roles: [role], slug: 'test-user'});
 
         await authenticateSession();
         await visit('/settings/general');
 
-        expect(currentURL(), 'currentURL').to.equal('/settings/staff/test-user');
+        expect(currentURL(), 'currentURL').to.equal('/site');
     });
 
-    it('redirects to staff page when authenticated as editor', async function () {
+    it('redirects to home page when authenticated as editor', async function () {
         let role = this.server.create('role', {name: 'Editor'});
         this.server.create('user', {roles: [role], slug: 'test-user'});
 
         await authenticateSession();
         await visit('/settings/general');
 
-        expect(currentURL(), 'currentURL').to.equal('/settings/staff');
+        expect(currentURL(), 'currentURL').to.equal('/site');
     });
 
     describe('when logged in', function () {
@@ -72,7 +72,7 @@ describe('Acceptance: Settings - General', function () {
             expect(
                 find('[data-test-button="save"]').textContent.trim(),
                 'save button text'
-            ).to.equal('Save settings');
+            ).to.equal('Save');
 
             await click('[data-test-toggle-pub-info]');
             await fillIn('[data-test-title-input]', 'New Blog Title');

@@ -1,4 +1,4 @@
-import Mirage from 'ember-cli-mirage';
+import {Response} from 'miragejs';
 import {authenticateSession} from 'ember-simple-auth/test-support';
 import {beforeEach, describe, it} from 'mocha';
 import {click, currentRouteName, fillIn, find, findAll, visit} from '@ember/test-helpers';
@@ -8,7 +8,7 @@ import {setupMirage} from 'ember-cli-mirage/test-support';
 import {versionMismatchResponse} from 'ghost-admin/mirage/utils';
 
 let htmlErrorResponse = function () {
-    return new Mirage.Response(
+    return new Response(
         504,
         {'Content-Type': 'text/html'},
         '<!DOCTYPE html><head><title>Server Error</title></head><body>504 Gateway Timeout</body></html>'
@@ -38,7 +38,6 @@ describe('Acceptance: Error Handling', function () {
                 await click('.posts-list li:nth-of-type(2) a'); // select second post
                 await click('[data-test-publishmenu-trigger]');
                 await click('[data-test-publishmenu-save]');
-                await click('[data-test-button="confirm-publish"]'); // "Save post"
 
                 // has the refresh to update alert
                 expect(findAll('.gh-alert').length).to.equal(1);
@@ -100,7 +99,6 @@ describe('Acceptance: Error Handling', function () {
             await visit('/editor/post/1');
             await click('[data-test-publishmenu-trigger]');
             await click('[data-test-publishmenu-save]');
-            await click('[data-test-button="confirm-publish"]');
 
             expect(findAll('.gh-alert').length).to.equal(1);
             expect(find('.gh-alert').textContent).to.not.match(/html>/);

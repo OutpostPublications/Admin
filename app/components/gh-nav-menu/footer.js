@@ -1,17 +1,22 @@
 import Component from '@ember/component';
 import calculatePosition from 'ember-basic-dropdown/utils/calculate-position';
+import classic from 'ember-classic-decorator';
 import {and, match} from '@ember/object/computed';
 import {inject as service} from '@ember/service';
 
-export default Component.extend({
-    config: service(),
-    session: service(),
-    router: service(),
-    whatsNew: service(),
-    feature: service(),
+@classic
+export default class Footer extends Component {
+    @service config;
+    @service session;
+    @service router;
+    @service whatsNew;
+    @service feature;
 
-    showDropdownExtension: and('config.clientExtensions.dropdown', 'session.user.isOwnerOnly'),
-    isSettingsRoute: match('router.currentRouteName', /^settings/),
+    @and('config.clientExtensions.dropdown', 'session.user.isOwnerOnly')
+        showDropdownExtension;
+
+    @match('router.currentRouteName', /^settings/)
+        isSettingsRoute;
 
     // equivalent to "left: auto; right: -20px"
     userDropdownPosition(trigger, dropdown) {
@@ -23,4 +28,4 @@ export default Component.extend({
 
         return {horizontalPosition, verticalPosition, style};
     }
-});
+}

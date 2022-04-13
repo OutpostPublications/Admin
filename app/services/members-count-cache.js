@@ -1,8 +1,7 @@
-import Service from '@ember/service';
+import Service, {inject as service} from '@ember/service';
 import moment from 'moment';
 import {ghPluralize} from 'ghost-admin/helpers/gh-pluralize';
-import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 
 export default class MembersCountCacheService extends Service {
     @service session;
@@ -13,7 +12,7 @@ export default class MembersCountCacheService extends Service {
     async count(filter) {
         const cachedValue = this.cache[filter];
 
-        if (cachedValue && moment().diff(cachedValue.time, 'seconds') > 60) {
+        if (cachedValue && moment().diff(cachedValue.time, 'seconds') <= 60) {
             return cachedValue.count;
         }
 

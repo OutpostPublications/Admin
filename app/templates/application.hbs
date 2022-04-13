@@ -8,7 +8,7 @@
             <GhNavMenu />
         {{/if}}
 
-        <main class="gh-main {{this.ui.mainClass}}" role="main">
+        <main class="gh-main {{this.ui.mainClass}}">
             {{outlet}}
 
             {{#if this.showBilling}}
@@ -21,16 +21,10 @@
 
         <GhContentCover />
 
-        <GhMobileNavBar />
+        {{#unless this.session.user.isContributor}}
+            <GhMobileNavBar />
+        {{/unless}}
     </div>
-
-    {{#if this.customViews.showFormModal}}
-        <GhFullscreenModal
-            @modal="custom-view-form"
-            @close={{this.customViews.toggleFormModal}}
-            @modifier="action narrow"
-        />
-    {{/if}}
 
     {{#if this.settings.accentColor}}
         <style>
@@ -58,6 +52,8 @@
         </style>
     {{/if}}
 </GhApp>
+
+<div id="unsplash-selector-wormhole"></div>
 
 <EpmModalContainer />
 <EmberLoadRemover />

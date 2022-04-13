@@ -1,4 +1,6 @@
+import ArchiveOfferModal from '../components/modals/offers/archive';
 import Controller, {inject as controller} from '@ember/controller';
+import UnarchiveOfferModal from '../components/modals/offers/unarchive';
 import config from 'ghost-admin/config/environment';
 import copyTextToClipboard from 'ghost-admin/utils/copy-text-to-clipboard';
 import {action} from '@ember/object';
@@ -6,7 +8,7 @@ import {getSymbol} from 'ghost-admin/utils/currency';
 import {ghPriceAmount} from '../helpers/gh-price-amount';
 import {inject as service} from '@ember/service';
 import {slugify} from '@tryghost/string';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {timeout} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
@@ -99,7 +101,7 @@ export default class OffersController extends Controller {
 
     @task({drop: true})
     *fetchProducts() {
-        this.products = yield this.store.query('product', {include: 'monthly_price,yearly_price'});
+        this.products = yield this.store.query('product', {filter: 'type:paid+active:true', include: 'monthly_price,yearly_price'});
         this.products = this.products.filter((d) => {
             return d.monthlyPrice && d.yearlyPrice;
         });
@@ -203,7 +205,7 @@ export default class OffersController extends Controller {
         if (!this.portalMessageListener) {
             this.portalMessageListener = (event) => {
                 const resizeEvents = ['portal-ready', 'portal-preview-updated'];
-                if (resizeEvents.includes(event.data.type) && event.data.payload?.height && this.portalPreviewIframe.parentNode) {
+                if (resizeEvents.includes(event.data.type) && event.data.payload?.height && this.portalPreviewIframe?.parentNode) {
                     this.portalPreviewIframe.parentNode.style.height = `${event.data.payload.height}px`;
                 }
             };
@@ -347,10 +349,8 @@ export default class OffersController extends Controller {
     @action
     openConfirmArchiveModal() {
         if (!this.offer.isNew) {
-            this.modals.open('modals/offers/archive', {
+            this.modals.open(ArchiveOfferModal, {
                 offer: this.offer
-            }, {
-                className: 'fullscreen-modal fullscreen-modal-action fullscreen-modal-wide'
             });
         }
     }
@@ -358,10 +358,8 @@ export default class OffersController extends Controller {
     @action
     openConfirmUnarchiveModal() {
         if (!this.offer.isNew) {
-            this.modals.open('modals/offers/unarchive', {
+            this.modals.open(UnarchiveOfferModal, {
                 offer: this.offer
-            }, {
-                className: 'fullscreen-modal fullscreen-modal-action fullscreen-modal-wide'
             });
         }
     }

@@ -58,6 +58,7 @@
 @import "layouts/whatsnew.css";
 @import "layouts/tags.css";
 @import "layouts/members.css";
+@import "layouts/member-activity.css";
 @import "layouts/error.css";
 @import "layouts/apps.css";
 @import "layouts/packages.css";
@@ -68,6 +69,7 @@
 @import "layouts/fullscreen-wizard.css";
 @import "layouts/post-preview.css";
 @import "layouts/dashboard.css";
+@import "layouts/dashboard-v5.css";
 @import "layouts/products.css";
 @import "layouts/offers.css";
 
@@ -253,12 +255,12 @@ input:focus,
     background: var(--black) !important;
 }
 
-.gh-btn:not(.gh-btn-green):not(.gh-btn-blue):not(.gh-btn-red):not(.gh-btn-primary):not(.gh-btn-black):not(.gh-btn-text):not(.gh-btn-accent) {
+.gh-btn:not(.gh-btn-green):not(.gh-btn-blue):not(.gh-btn-red):not(.gh-btn-primary):not(.gh-btn-black):not(.gh-btn-text):not(.gh-btn-accent):not(.gh-btn-link) {
     background: var(--lightgrey);
     color: var(--black);
 }
 
-.gh-btn:not(.gh-btn-green):not(.gh-btn-blue):not(.gh-btn-red):not(.gh-btn-primary):not(.gh-btn-black):not(.gh-btn-text):not(.gh-btn-accent):hover {
+.gh-btn:not(.gh-btn-green):not(.gh-btn-blue):not(.gh-btn-red):not(.gh-btn-primary):not(.gh-btn-black):not(.gh-btn-text):not(.gh-btn-accent):not(.gh-btn-link):hover {
     background: var(--lightgrey-d1);
     color: var(--black);
 }
@@ -813,16 +815,6 @@ input:focus,
     background: var(--dark-main-bg-color) !important;
 }
 
-.gh-publishmenu-button {
-    color: var(--black);
-    background: var(--green-d1);
-}
-
-.gh-publishmenu-button:hover {
-    color: #fff;
-    background: var(--green) !important;
-}
-
 .gh-editor-feature-image-add-button {
     color: var(--midgrey);
 }
@@ -959,6 +951,30 @@ input:focus,
     background: var(--dark-main-bg-color);
 }
 
+.gh-members-empty .gh-members-placeholder {
+    fill: var(--midgrey-d2);
+}
+
+/* Members activity */
+.gh-members-activity-icon svg path,
+.gh-dashboard-activity-container svg path,
+.gh-member-feed-icon svg path {
+    stroke: #fff;
+}
+
+.gh-member-settings .gh-member-feed {
+    background: transparent;
+}
+
+.gh-member-feed-row {
+    border-bottom: 1px solid var(--lightgrey-l1);
+}
+
+/* Offers */
+.gh-offers-list-cta .discount-bubble {
+    color: var(--midgrey-d2);
+}
+
 /* Portal */
 .gh-portal-settings-maintabs {
     border: 1px solid color-mod(var(--darkgrey) l(-27%) blackness(+15%));
@@ -1030,6 +1046,11 @@ input:focus,
     background: var(--white);
 }
 
+.gh-dashboard5-box {
+    flex: 1;
+    border: 1px solid var(--lightgrey);
+}
+
 .gh-notification {
     background: var(--lightgrey);
 }
@@ -1072,3 +1093,21 @@ kbd {
     color: #394047;
 }
 
+
+/* Finishing touches */
+/* ---------------------------------------------------- */
+.gh-done {
+    background: #15171A;
+}
+
+
+/* Dashboard v5 */
+.gh-dashboard5 .gh-dashboard5-anchor .gh-dashboard5-stats-button.is-selected {
+    border-color: #394047;
+}
+
+.gh-dashboard5 .gh-dashboard5-list-header,
+.gh-dashboard5 .gh-dashboard5-list-item,
+.gh-dashboard5 .gh-dashboard5-list-footer {
+    border-color: #394047;
+}

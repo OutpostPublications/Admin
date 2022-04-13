@@ -1,8 +1,8 @@
 import PostSerializer from './post';
 
-export default PostSerializer.extend({
-    serialize(/*snapshot, options*/) {
-        let json = this._super(...arguments);
+export default class Page extends PostSerializer {
+    serialize() {
+        let json = super.serialize(...arguments);
 
         // Properties that exist on the model but we don't want sent in the payload
         delete json.email_subject;
@@ -12,6 +12,21 @@ export default PostSerializer.extend({
         delete json.email_id;
         delete json.email;
 
+        if (json.visibility === null) {
+            delete json.visibility;
+            delete json.visibility_filter;
+            delete json.tiers;
+        }
+
+        if (json.visibility === 'tiers') {
+            delete json.visibility_filter;
+        }
+
+        if (json.visibility === 'tiers' && !json.tiers?.length) {
+            delete json.visibility;
+            delete json.tiers;
+        }
+
         return json;
     }
-});
+}

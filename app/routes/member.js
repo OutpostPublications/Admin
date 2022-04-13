@@ -1,8 +1,9 @@
-import AuthenticatedRoute from 'ghost-admin/routes/authenticated';
+import AdminRoute from 'ghost-admin/routes/admin';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
 
-export default class MembersRoute extends AuthenticatedRoute {
+export default class MembersRoute extends AdminRoute {
+    @service feature;
     @service router;
 
     _requiresBackgroundRefresh = true;
@@ -14,18 +15,11 @@ export default class MembersRoute extends AuthenticatedRoute {
         });
     }
 
-    beforeModel() {
-        super.beforeModel(...arguments);
-        if (!this.session.user.isAdmin) {
-            return this.transitionTo('home');
-        }
-    }
-
     model(params) {
         this._requiresBackgroundRefresh = false;
 
         if (params.member_id) {
-            return this.store.queryRecord('member', {id: params.member_id, include: 'email_recipients,products'});
+            return this.store.queryRecord('member', {id: params.member_id, include: 'products'});
         } else {
             return this.store.createRecord('member');
         }

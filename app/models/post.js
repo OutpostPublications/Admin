@@ -3,12 +3,11 @@ import Model, {attr, belongsTo, hasMany} from '@ember-data/model';
 import ValidationEngine from 'ghost-admin/mixins/validation-engine';
 import boundOneWay from 'ghost-admin/utils/bound-one-way';
 import moment from 'moment';
-import {compare} from '@ember/utils';
+import {compare, isBlank} from '@ember/utils';
 // eslint-disable-next-line ghost/ember/no-observers
 import {BLANK_DOC} from 'koenig-editor/components/koenig-editor';
 import {computed, observer} from '@ember/object';
 import {equal, filterBy, reads} from '@ember/object/computed';
-import {isBlank} from '@ember/utils';
 import {on} from '@ember/object/evented';
 import {inject as service} from '@ember/service';
 
@@ -93,7 +92,6 @@ export default Model.extend(Comparable, ValidationEngine, {
     emailSubject: attr('string'),
     html: attr('string'),
     visibility: attr('string'),
-    visibilityFilter: attr('string'),
     metaDescription: attr('string'),
     metaTitle: attr('string'),
     mobiledoc: attr('json-string', {defaultValue: () => JSON.parse(JSON.stringify(BLANK_DOC))}),
@@ -116,6 +114,7 @@ export default Model.extend(Comparable, ValidationEngine, {
     authors: hasMany('user', {embedded: 'always', async: false}),
     createdBy: belongsTo('user', {async: true}),
     email: belongsTo('email', {async: false}),
+    newsletter: belongsTo('newsletter', {embedded: 'always', async: false}),
     publishedBy: belongsTo('user', {async: true}),
     tags: hasMany('tag', {embedded: 'always', async: false}),
 
@@ -146,7 +145,7 @@ export default Model.extend(Comparable, ValidationEngine, {
     ogTitleScratch: boundOneWay('ogTitle'),
     twitterDescriptionScratch: boundOneWay('twitterDescription'),
     twitterTitleScratch: boundOneWay('twitterTitle'),
-
+    tiers: attr('member-product'),
     emailSubjectScratch: boundOneWay('emailSubject'),
 
     isPublished: equal('status', 'published'),
@@ -181,7 +180,7 @@ export default Model.extend(Comparable, ValidationEngine, {
         return this.visibility === 'public' ? true : false;
     }),
 
-    visibilitySegment: computed('visibility', 'visibilityFilter', 'isPublic', function () {
+    visibilitySegment: computed('visibility', 'isPublic', 'tiers', function () {
         if (this.isPublic) {
             return this.settings.get('defaultContentVisibility') === 'paid' ? 'status:-free' : 'status:free,status:-free';
         } else {
@@ -191,8 +190,11 @@ export default Model.extend(Comparable, ValidationEngine, {
             if (this.visibility === 'paid') {
                 return 'status:-free';
             }
-            if (this.visibility === 'filter') {
-                return this.visibilityFilter;
+            if (this.visibility === 'tiers' && this.tiers) {
+                let filter = this.tiers.map((tier) => {
+                    return `product:${tier.slug}`;
+                }).join(',');
+                return filter;
             }
             return this.visibility;
         }

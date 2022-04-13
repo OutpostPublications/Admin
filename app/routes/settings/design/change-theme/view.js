@@ -1,7 +1,9 @@
-import Route from '@ember/routing/route';
+import AdminRoute from 'ghost-admin/routes/admin';
+import ViewThemeModal from 'ghost-admin/components/modals/design/view-theme';
+import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
 
-export default class ViewThemeRoute extends Route {
+export default class ViewThemeRoute extends AdminRoute {
     @service modals;
 
     themeModal = null;
@@ -23,12 +25,25 @@ export default class ViewThemeRoute extends Route {
     setupController(controller, model) {
         this.themeModal?.close();
 
-        this.themeModal = this.modals.open('modals/design/view-theme', {
+        this.themeModal = this.modals.open(ViewThemeModal, {
             theme: model
+        }, {
+            beforeClose: this.beforeModalClose
         });
     }
 
     deactivate() {
+        this.isLeaving = true;
         this.themeModal?.close();
+
+        this.isLeaving = false;
+        this.themeModal = null;
+    }
+
+    @action
+    beforeModalClose() {
+        if (this.themeModal && !this.isLeaving) {
+            this.router.transitionTo('settings.design.change-theme');
+        }
     }
 }

@@ -1,7 +1,7 @@
 import ModalComponent from 'ghost-admin/components/modal-base';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 export default class ModalMemberProduct extends ModalComponent {
@@ -17,7 +17,8 @@ export default class ModalMemberProduct extends ModalComponent {
 
     @task({drop: true})
     *fetchProducts() {
-        this.products = yield this.store.query('product', {include: 'monthly_price,yearly_price,benefits'});
+        this.products = yield this.store.query('product', {filter: 'type:paid+active:true', include: 'monthly_price,yearly_price,benefits'});
+
         this.loadingProducts = false;
         if (this.products.length > 0) {
             this.selectedProduct = this.products.firstObject.id;
@@ -68,7 +69,8 @@ export default class ModalMemberProduct extends ModalComponent {
 
     @task({drop: true})
     *addProduct() {
-        let url = this.ghostPaths.url.api(`members/${this.member.get('id')}`);
+        const url = `${this.ghostPaths.url.api(`members/${this.member.get('id')}`)}?include=products`;
+
         // Cancel existing active subscriptions for member
         for (let i = 0; i < this.activeSubscriptions.length; i++) {
             const subscription = this.activeSubscriptions[i];
@@ -79,7 +81,8 @@ export default class ModalMemberProduct extends ModalComponent {
                 }
             });
         }
-        let response = yield this.ajax.put(url, {
+
+        const response = yield this.ajax.put(url, {
             data: {
                 members: [{
                     id: this.member.get('id'),
@@ -104,5 +107,5 @@ export default class ModalMemberProduct extends ModalComponent {
         closeModal() {
             this.close();
         }
-    }
+    };
 }

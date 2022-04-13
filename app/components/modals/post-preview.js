@@ -1,9 +1,18 @@
 import Component from '@glimmer/component';
 import {action} from '@ember/object';
-import {task} from 'ember-concurrency-decorators';
+import {inject as service} from '@ember/service';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
-export default class ModalPostPreviewComponent extends Component {
+export default class PostPreviewModal extends Component {
+    @service settings;
+    @service session;
+
+    static modalOptions = {
+        className: 'fullscreen-modal-full-overlay fullscreen-modal-email-preview',
+        focusTrapOptions: null // not ideal but date inputs aren't focusable otherwise
+    };
+
     @tracked tab = 'browser';
 
     constructor() {

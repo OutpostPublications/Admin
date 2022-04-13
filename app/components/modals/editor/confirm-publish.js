@@ -1,10 +1,10 @@
 import Component from '@glimmer/component';
 import {action} from '@ember/object';
 import {inject as service} from '@ember/service';
-import {task} from 'ember-concurrency-decorators';
+import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
-export default class ModalsEditorConfirmPublishComponent extends Component {
+export default class ConfirmPublishModal extends Component {
     @service membersCountCache;
     @service session;
     @service store;
@@ -60,16 +60,10 @@ export default class ModalsEditorConfirmPublishComponent extends Component {
     @task
     *countRecipientsTask() {
         const {sendEmailWhenPublished} = this.args.data;
-
-        if (sendEmailWhenPublished === 'none') {
-            this.memberCount = 0;
-            this.memberCountString = '0 members';
-        }
-
         const filter = `subscribed:true+(${sendEmailWhenPublished})`;
 
-        this.memberCount = sendEmailWhenPublished ? yield this.membersCountCache.count(filter) : 0;
-        this.memberCountString = sendEmailWhenPublished ? yield this.membersCountCache.countString(filter) : '0 members';
+        this.memberCount = sendEmailWhenPublished ? (yield this.membersCountCache.count(filter)) : 0;
+        this.memberCountString = sendEmailWhenPublished ? (yield this.membersCountCache.countString(filter)) : '0 members';
     }
 
     @task

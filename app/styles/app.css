@@ -58,6 +58,7 @@
 @import "layouts/whatsnew.css";
 @import "layouts/tags.css";
 @import "layouts/members.css";
+@import "layouts/member-activity.css";
 @import "layouts/error.css";
 @import "layouts/apps.css";
 @import "layouts/packages.css";
@@ -68,6 +69,7 @@
 @import "layouts/fullscreen-wizard.css";
 @import "layouts/post-preview.css";
 @import "layouts/dashboard.css";
+@import "layouts/dashboard-v5.css";
 @import "layouts/products.css";
 @import "layouts/offers.css"
 

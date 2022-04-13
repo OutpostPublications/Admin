@@ -1,33 +1,27 @@
-import AuthenticatedRoute from 'ghost-admin/routes/authenticated';
-import CurrentUserSettings from 'ghost-admin/mixins/current-user-settings';
-import {computed} from '@ember/object';
+import AdminRoute from 'ghost-admin/routes/admin';
 import {inject as service} from '@ember/service';
 
-export default AuthenticatedRoute.extend(CurrentUserSettings, {
-    router: service(),
-    config: service(),
+export default class ZapierRoute extends AdminRoute {
+    @service router;
+    @service config;
 
-    init() {
-        this._super(...arguments);
+    constructor() {
+        super(...arguments);
         this.router.on('routeWillChange', () => {
             if (this.controller) {
                 this.controller.set('selectedApiKey', null);
                 this.controller.set('isApiKeyRegenerated', false);
             }
         });
-    },
-
-    disabled: computed('config.hostSettings.limits', function () {
-        return this.config.get('hostSettings.limits.customIntegrations.disabled');
-    }),
+    }
 
     beforeModel() {
-        this._super(...arguments);
+        super.beforeModel(...arguments);
 
-        this.transitionDisabled();
-        this.transitionAuthor(this.session.user);
-        this.transitionEditor(this.session.user);
-    },
+        if (this.config.get('hostSettings.limits.customIntegrations.disabled')) {
+            return this.transitionTo('settings.integrations');
+        }
+    }
 
     model(params, transition) {
         // use the integrations controller to fetch all integrations and pick
@@ -36,17 +30,11 @@ export default AuthenticatedRoute.extend(CurrentUserSettings, {
         return this
             .controllerFor('settings.integrations')
             .integrationModelHook('slug', 'zapier', this, transition);
-    },
-
-    transitionDisabled() {
-        if (this.get('disabled')) {
-            this.transitionTo('settings.integrations');
-        }
-    },
+    }
 
     buildRouteInfoMetadata() {
         return {
             titleToken: 'Zapier'
         };
     }
-});
+}

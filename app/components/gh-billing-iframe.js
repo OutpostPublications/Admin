@@ -1,19 +1,21 @@
 import Component from '@ember/component';
+import classic from 'ember-classic-decorator';
 import {htmlSafe} from '@ember/template';
 import {inject as service} from '@ember/service';
 
-export default Component.extend({
-    billing: service(),
-    config: service(),
-    ghostPaths: service(),
-    ajax: service(),
-    notifications: service(),
+@classic
+export default class GhBillingIframe extends Component {
+    @service billing;
+    @service config;
+    @service ghostPaths;
+    @service ajax;
+    @service notifications;
 
-    isOwner: null,
-    fetchingSubscription: false,
+    isOwner = null;
+    fetchingSubscription = false;
 
     didInsertElement() {
-        this._super(...arguments);
+        super.didInsertElement(...arguments);
 
         this.billing.getBillingIframe().src = this.billing.getIframeURL();
 
@@ -32,7 +34,7 @@ export default Component.extend({
                 }
             }
         });
-    },
+    }
 
     _handleTokenRequest() {
         this.set('fetchingSubscription', false);
@@ -71,7 +73,7 @@ export default Component.extend({
                 response: 'subscription'
             }, '*');
         }
-    },
+    }
 
     _handleForceUpgradeRequest() {
         // Send BMA requested information about forceUpgrade and owner name/email
@@ -92,7 +94,7 @@ export default Component.extend({
                 ownerUser
             }
         }, '*');
-    },
+    }
 
     _handleSubscriptionUpdate(data) {
         this.billing.set('subscription', data.subscription);
@@ -128,4 +130,4 @@ export default Component.extend({
             this.notifications.closeAlerts('billing.exceeded');
         }
     }
-});
+}
