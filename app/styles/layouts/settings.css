@@ -813,63 +813,6 @@
     height: 6px;
 }
 
-.gh-email-publishmenu-preview .gh-main-section-header.small {
-    padding-top: 4px;
-}
-
-.gh-email-publishmenu-preview .gh-publishmenu-dropdown-container {
-    height: calc(346px * .9);
-}
-
-.gh-email-publishmenu-preview .gh-publishmenu-dropdown {
-    position: relative;
-    top: inherit;
-    right: inherit;
-    margin: 0;
-    box-shadow:
-        0 7px 7px rgba(0, 0, 0, 0.04),
-        0 3px 2.2px -5px rgba(0, 0, 0, 0.011),
-        0 6px 5.3px -5px rgba(0, 0, 0, 0.016),
-        0 10.5px 10px -5px rgba(0, 0, 0, 0.02),
-        0 18px 17.9px -5px rgba(0, 0, 0, 0.024),
-        0 33.8px 33.4px -5px rgba(0, 0, 0, 0.029),
-        0 80px 80px -5px rgba(0, 0, 0, 0.04)
-    ;
-    transform: scale(.9);
-    transform-origin: top left;
-    pointer-events: none;
-}
-
-.gh-publishmenu-heading-dropdown {
-    font-weight: 500;
-    color: var(--black);
-}
-
-.gh-publishmenu-heading-dropdown svg {
-    width: auto;
-    height: 9px;
-    margin-right: 4px;
-}
-
-.gh-publishmenu-heading-dropdown svg path {
-    stroke: var(--black);
-    stroke-width: 2px;
-}
-
-.gh-email-publishmenu-preview .gh-publishmenu-radio .gh-publishmenu-radio-label:after {
-    content: "";
-    display: block;
-    width: 80%;
-    height: 12px;
-    margin-top: 8px;
-    background: var(--whitegrey-d1);
-    border-radius: 6px;
-}
-
-.gh-email-publishmenu-preview .gh-publishmenu-radio.active .gh-publishmenu-radio-label:after {
-    width: 100%;
-}
-
 .member-segments .select-members {
     margin-bottom: .4rem;
 }
@@ -908,10 +851,20 @@
 
 .gh-newsletters .gh-expandable-block {
     padding: 24px;
+
+    /* Correct last card margin by reducing bottom padding */
+    padding-bottom: 12px;
+}
+
+.gh-newsletter-card-container {
+    margin-left: -24px;
+    padding-left: 24px;
+    position: relative;
 }
 
 .gh-newsletters .gh-main-content-card:last-of-type {
-    margin-bottom: 0;
+    /* Note that we need to keep the margin of the cards consistent, or they'll jump when we drag the cards to sort them */
+    margin-bottom: 12px;
 }
 
 .gh-newsletter-card {
@@ -919,48 +872,56 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: margin 125ms ease-in-out, padding 125ms ease-in-out;
 }
 
-.gh-newsletter-card[draggable="true"] {
-    /* required to avoid background being picked up when dragging */
+.gh-newsletter-card-container[draggable="true"] {
+    /* required to avoid background being picked up when dragging (Chrome only) */
     z-index: 1;
 }
 
-.gh-newsletter-card-draggable:hover {
-    margin-left: 4px;
-    padding-left: 20px;
-}
-.gh-newsletter-card .grab-newsletter {
-    display: none;
-}
-.gh-newsletter-card-draggable .grab-newsletter {
-    display: inline-block;
-}
-
-@media (max-width: 980px) {
-    .gh-newsletter-card {
-        padding: 4vmin 48px;
-    }
-}
-
-.gh-newsletter-card .grab-newsletter {
+.gh-newsletter-card-container .grab-newsletter {
     visibility: hidden;
     position: absolute;
     top: 0;
-    left: -20px;
+    left: 8px;
     width: 2rem;
     height: 100%;
     padding-right: 2px;
     fill: var(--lightgrey-d2);
     cursor: move;
     opacity: 0;
-    transition: visibility 0s, opacity 200ms ease-in-out;
+    transition: visibility 200ms step-end, opacity 200ms ease-in-out;
 }
 
-.gh-newsletter-card.multiple:hover .grab-newsletter {
+.gh-newsletter-card {
+    transition: margin 125ms ease-in-out, padding 125ms ease-in-out;
+}
+
+/*
+    When dragging, the :hover selector could be on the wrong element. So we explicitly ignore :hover when we are dragging and switch to the .is-dragging-object
+*/
+body:not([data-user-is-dragging]) .gh-newsletter-card-draggable:hover .gh-newsletter-card, .gh-newsletter-card-draggable.is-dragging-object .gh-newsletter-card {
+    margin-left: 4px;
+    padding-left: 20px;
+}
+
+body:not([data-user-is-dragging]) .gh-newsletter-card-draggable:hover .grab-newsletter, .gh-newsletter-card-draggable.is-dragging-object .grab-newsletter {
     visibility: visible;
     opacity: 1;
+
+    /*
+        To make sure the grab handler also fades out correctly and only change visibility after the animation,
+        we need to update the animation curve for visibility to step-start at the start of the animation
+    */
+    transition: visibility 200ms step-start, opacity 200ms ease-in-out;
+}
+
+.gh-newsletter-card-container .grab-newsletter {
+    display: none;
+}
+
+.gh-newsletter-card-draggable .grab-newsletter {
+    display: inline-block;
 }
 
 .gh-newsletter-card-block.title-block {
@@ -999,8 +960,9 @@
     display: flex;
     align-items: center;
     margin: 0;
-    font-size: 1.9rem;
-    line-height: 22px;
+    font-size: 1.8rem;
+    font-weight: 600;
+    line-height: 1.3em;
 }
 
 .stats-block .gh-newsletter-card-name {
@@ -1023,6 +985,7 @@
 
 .gh-newsletter-actions-menu {
     margin-top: 4px;
+    background: none;
 }
 
 .gh-add-newsletter {
@@ -1042,10 +1005,6 @@
     stroke-width: 3;
 }
 
-.gh-newsletters-labs .modal-fullsettings-sidebar {
-    width: 480px;
-}
-
 .gh-newsletters-setting-sectionheading {
     font-size: 1.1rem;
     font-weight: 600;
@@ -1057,18 +1016,29 @@
     border-bottom: 1px solid var(--whitegrey);
 }
 
-.gh-newsletters-labs .modal-fullsettings-section {
-    margin: 40px 0;
-    padding: 0;
-}
-
-.gh-newsletters-labs .modal-fullsettings-section.first {
-    margin-top: 8px;
-}
-
 .gh-newsletters-labs .form-group.vertical p {
-    margin: 0 0 12px;
-    line-height: 1em;
+    margin: 4px 0 0;
+}
+
+.gh-newsletters-labs .modal-fullsettings-uploader {
+    flex-grow: 1;
+    margin: 0;
+}
+
+.gh-newsletters-labs .gh-header-img-uploadicon {
+    background: var(--whitegrey-l2);
+}
+
+.gh-newsletters-labs .gh-email-design-typography-wrapper.header .gh-btn-group {
+    background: var(--whitegrey-d1);
+}
+
+.gh-newsletters-labs .gh-stack-item .tooltip-top-left::before {
+    width: max-content;
+    max-width: 320px;
+    white-space: normal;
+    word-break: break-word;
+    text-align: left;
 }
 
 .gh-newsletters-labs .gh-members-emailsettings-footer {
@@ -1076,14 +1046,24 @@
     margin-bottom: 0;
 }
 
-.modal-fullsettings-main-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    position: relative;
-    width: 100%;
-    height: 66px;
-    padding: 2.4rem;
+.gh-newsletters-labs .gh-members-emailpreview-container {
+    margin: 16px auto 32px;
+}
+
+.gh-newsletters-labs .gh-members-emailpreview-faux {
+    height: 88px;
+    background: var(--whitegrey-l2);
+}
+
+.gh-newsletters-labs .gh-members-emailpreview-faux .dark,
+.gh-newsletters-labs .gh-members-emailpreview-faux .strong {
+    color: var(--darkgrey);
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.gh-newsletters-labs .gh-members-emailpreview-faux p {
+    color: var(--midgrey-l2);
 }
 
 /* Code injection
@@ -1718,7 +1698,6 @@ p.theme-validation-details {
     color: var(--darkgrey-l1);
     font-weight: 400;
     font-size: 1.45rem;
-    border-radius: var(--border-radius);
     transition: none;
 }
 
@@ -1803,7 +1782,7 @@ p.theme-validation-details {
 .gh-nav-design .gh-nav-bottom::after {
     bottom: 72px;
     box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 -8px 16px -3px rgba(0,0,0,.15);
-  }
+}
 
 .gh-change-theme {
     position: sticky;
@@ -1841,7 +1820,6 @@ p.theme-validation-details {
     margin: 8px 0 24px;
     padding: 24px var(--main-layout-area-padding) 16px;
     background: var(--mainmenu-color-hover-bg);
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
 
 .gh-nav-design .gh-setting {
@@ -1943,13 +1921,13 @@ p.theme-validation-details {
     height: 100%;
 }
 
-.gh-design-page-preview-mode,
-.gh-design-page-preview-mode select {
+.gh-preview-page-selector,
+.gh-preview-page-selector select {
     height: 34px;
-    min-width: 128px;
+    min-width: 160px;
 }
 
-.gh-design-page-preview-mode svg {
+.gh-preview-page-selector svg {
     margin-top: -.1em;
 }
 

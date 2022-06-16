@@ -114,7 +114,7 @@ export default class SigninController extends Controller.extend(ValidationEngine
 
     @task(function* () {
         let email = this.get('signin.identification');
-        let forgottenUrl = this.get('ghostPaths.url').api('authentication', 'passwordreset');
+        let forgottenUrl = this.get('ghostPaths.url').api('authentication', 'password_reset');
         let notifications = this.notifications;
 
         this.set('flowErrors', '');
@@ -123,7 +123,7 @@ export default class SigninController extends Controller.extend(ValidationEngine
 
         try {
             yield this.validate({property: 'forgotPassword'});
-            yield this.ajax.post(forgottenUrl, {data: {passwordreset: [{email}]}});
+            yield this.ajax.post(forgottenUrl, {data: {password_reset: [{email}]}});
             notifications.showAlert(
                 'Please check your email for instructions.',
                 {type: 'info', key: 'forgot-password.send.success'}

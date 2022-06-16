@@ -12,7 +12,7 @@ export default Model.extend(ValidationEngine, {
     coverImage: attr('string'),
     icon: attr('string'),
     accentColor: attr('string'),
-    lang: attr('string'),
+    locale: attr('string'),
     timezone: attr('string', {defaultValue: 'Etc/UTC'}),
     codeinjectionHead: attr('string'),
     codeinjectionFoot: attr('string'),
@@ -24,7 +24,8 @@ export default Model.extend(ValidationEngine, {
     isPrivate: attr('boolean'),
     publicHash: attr('string'),
     password: attr('string'),
-    slack: attr('slack-settings'),
+    slackUrl: attr('string'),
+    slackUsername: attr('string'),
     amp: attr('boolean'),
     ampGtagId: attr('string'),
     firstpromoter: attr('boolean'),
@@ -56,16 +57,9 @@ export default Model.extend(ValidationEngine, {
     membersSignupAccess: attr('string'),
     defaultContentVisibility: attr('string'),
     defaultContentVisibilityTiers: attr('json-string'),
-    membersFromAddress: attr('string'),
     membersSupportAddress: attr('string'),
-    membersReplyAddress: attr('string'),
-    membersPaidSignupRedirect: attr('string'),
-    membersFreeSignupRedirect: attr('string'),
-    membersFreePriceName: attr('string'),
-    membersFreePriceDescription: attr('string'),
     membersMonthlyPriceId: attr('string'),
     membersYearlyPriceId: attr('string'),
-    stripeProductName: attr('string'),
     stripeSecretKey: attr('string'),
     stripePublishableKey: attr('string'),
     stripePlans: attr('json-string'),
@@ -75,27 +69,13 @@ export default Model.extend(ValidationEngine, {
     stripeConnectLivemode: attr('boolean'),
     stripeConnectDisplayName: attr('string'),
     stripeConnectAccountId: attr('string'),
-    /**
-    * Newsletter settings
-    */
-    newsletterHeaderImage: attr('string'),
-    newsletterShowHeaderIcon: attr('boolean'),
-    newsletterShowHeaderTitle: attr('boolean'),
-    newsletterTitleFontCategory: attr('string'),
-    newsletterTitleAlignment: attr('string'),
-    newsletterShowFeatureImage: attr('boolean'),
-    newsletterBodyFontCategory: attr('string'),
-    newsletterFooterContent: attr('string'),
-    newsletterShowBadge: attr('boolean'),
-    /**
-     * OAuth settings
-     */
-    oauthClientId: attr('string'),
-    oauthClientSecret: attr('string'),
+
+    membersEnabled: attr('boolean'),
+    paidMembersEnabled: attr('boolean'),
+
     /**
      * Editor settings
      */
-    editorIsLaunchComplete: attr('boolean'),
     editorDefaultEmailRecipients: attr('string'),
     editorDefaultEmailRecipientsFilter: attr('members-segment-string'),
     emailVerificationRequired: attr('boolean'),

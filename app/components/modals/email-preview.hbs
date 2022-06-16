@@ -16,11 +16,11 @@
 
     {{#if (eq this.tab "mobile")}}
         <div class="modal-body modal-preview-email-content gh-pe-mobile-container">
-            <div class="gh-pe-mobile-bezel">
+            <div class="gh-pe-mobile-bezel center mt4">
                 <div class="gh-pe-mobile-screen">
                     <div class="gh-pe-emailclient-sender">
                         <p>
-                            <span class="strong">{{this.config.blogTitle}}</span> &lt;{{this.settings.membersFromAddress}}&gt;
+                            <span class="strong">{{or this.newsletter.senderName this.settings.title}}</span> &lt;{{full-email-address (or this.newsletter.senderEmail "noreply")}}&gt;
                         </p>
                         <p><span class="dark">To:</span> Jamie Larson &lt;jamie@example.com&gt;</p>
                     </div>
@@ -35,7 +35,7 @@
             <div class="gh-pe-emailclient-mockup">
                 <div class="gh-pe-emailclient-sender">
                     <p>
-                        <span class="strong">{{this.config.blogTitle}}</span> &lt;{{this.settings.membersFromAddress}}&gt;
+                        <span class="strong">{{or this.newsletter.senderName this.settings.title}}</span> &lt;{{full-email-address (or this.newsletter.senderEmail "noreply")}}&gt;
                     </p>
                     <p><span class="dark">To:</span> Jamie Larson &lt;jamie@example.com&gt;</p>
                 </div>

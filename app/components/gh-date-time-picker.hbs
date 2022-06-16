@@ -3,10 +3,10 @@
         @selected={{this._date}}
         @center={{this._date}}
         @onSelect={{action "setDateInternal" value="date"}}
-        @renderInPlace={{true}}
+        @renderInPlace={{this.renderInPlaceWithFallback}}
         @disabled={{this.disabled}} as |dp|
     >
-        <dp.Trigger @tabindex="-1" data-test-date-time-picker-datepicker>
+        <dp.Trigger class={{@datePickerTriggerClass}} @tabindex="-1" data-test-date-time-picker-datepicker>
             <div class="gh-date-time-picker-date {{if this.dateError "error"}}">
                 <input type="text"
                     placeholder={{this.dateFormat}}
@@ -19,13 +19,13 @@
                 {{svg-jar "calendar"}}
             </div>
         </dp.Trigger>
-        <dp.Content class="dropdown-menu">
+        <dp.Content class="dropdown-menu {{@datePickerClass}}">
             <dp.Nav />
             <dp.Days @minDate={{this._minDate}} @maxDate={{this._maxDate}} @weekdayFormat="min" />
         </dp.Content>
     </PowerDatepicker>
 
-    <div class="gh-date-time-picker-time {{if this.hasError "error"}}">
+    <div class="gh-date-time-picker-time {{if this.hasError "error"}} {{@timeInputClass}}">
         <input
             type="text"
             value={{this._time}}
@@ -35,9 +35,9 @@
             {{did-insert this.registerTimeInput}}
             data-test-date-time-picker-time-input
         >
-        <small class="gh-date-time-picker-timezone" data-test-date-time-picker-timezone>({{this.timezone}})</small>
+        <small class="gh-date-time-picker-timezone" data-test-date-time-picker-timezone>{{this.timezone}}</small>
     </div>
+    {{#if this.hasError}}
+        <div class="gh-date-time-picker-error" data-test-date-time-picker-error>{{this.dateError}}{{this.timeError}}</div>
+    {{/if}}
 </div>
-{{#if this.hasError}}
-    <div class="gh-date-time-picker-error" data-test-date-time-picker-error>{{this.dateError}}{{this.timeError}}</div>
-{{/if}}

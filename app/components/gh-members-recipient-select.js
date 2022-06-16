@@ -1,6 +1,5 @@
 import Component from '@glimmer/component';
 import flattenGroupedOptions from 'ghost-admin/utils/flatten-grouped-options';
-import {Promise} from 'rsvp';
 import {action} from '@ember/object';
 import {isBlank} from '@ember/utils';
 import {inject as service} from '@ember/service';
@@ -11,20 +10,19 @@ const BASE_FILTERS = ['status:free', 'status:-free'];
 
 export default class GhMembersRecipientSelect extends Component {
     @service membersUtils;
-    @service session;
     @service store;
-    @service feature;
 
     @tracked forceSpecificChecked = false;
     @tracked specificOptions = [];
-    @tracked freeMemberCount;
-    @tracked paidMemberCount;
 
     constructor() {
         super(...arguments);
 
         this.fetchSpecificOptionsTask.perform();
-        this.fetchMemberCountsTask.perform();
+    }
+
+    get renderInPlace() {
+        return this.args.renderInPlace === undefined ? true : this.args.renderInPlace;
     }
 
     get baseFilters() {
@@ -58,20 +56,6 @@ export default class GhMembersRecipientSelect extends Component {
     get selectedSpecificOptions() {
         return flattenGroupedOptions(this.specificOptions)
             .filter(o => this.specificFilters.has(o.segment));
-    }
-
-    get freeMemberCountLabel() {
-        if (this.freeMemberCount !== undefined) {
-            return `(${this.freeMemberCount})`;
-        }
-        return '';
-    }
-
-    get paidMemberCountLabel() {
-        if (this.paidMemberCount !== undefined) {
-            return `(${this.paidMemberCount})`;
-        }
-        return '';
     }
 
     @action
@@ -167,48 +151,28 @@ export default class GhMembersRecipientSelect extends Component {
 
             options.push(labelsGroup);
         }
-        if (this.feature.get('multipleProducts')) {
-            // fetch all products w̶i̶t̶h̶ c̶o̶u̶n̶t̶s̶
-            // TODO: add `include: 'count.members` to query once API supports
-            const products = yield this.store.query('product', {filter: 'type:paid', limit: 'all'});
+        // fetch all tiers w̶i̶t̶h̶ c̶o̶u̶n̶t̶s̶
+        // TODO: add `include: 'count.members` to query once API supports
+        const tiers = yield this.store.query('tier', {filter: 'type:paid', limit: 'all'});
 
-            if (products.length > 1) {
-                const productsGroup = {
-                    groupName: 'Tiers',
-                    options: []
-                };
+        if (tiers.length > 1) {
+            const tiersGroup = {
+                groupName: 'Tiers',
+                options: []
+            };
 
-                products.forEach((product) => {
-                    productsGroup.options.push({
-                        name: product.name,
-                        segment: `product:${product.slug}`,
-                        count: product.count?.members,
-                        class: 'segment-product'
-                    });
+            tiers.forEach((tier) => {
+                tiersGroup.options.push({
+                    name: tier.name,
+                    segment: `tier:${tier.slug}`,
+                    count: tier.count?.members,
+                    class: 'segment-tier'
                 });
+            });
 
-                options.push(productsGroup);
-            }
+            options.push(tiersGroup);
         }
 
         this.specificOptions = options;
-    }
-
-    @task
-    *fetchMemberCountsTask() {
-        const user = yield this.session.user;
-
-        if (!user.isAdmin) {
-            return;
-        }
-
-        yield Promise.all([
-            this.store.query('member', {filter: 'subscribed:true+status:free', limit: 1}).then((res) => {
-                this.freeMemberCount = res.meta.pagination.total;
-            }),
-            this.store.query('member', {filter: 'subscribed:true+status:-free', limit: 1}).then((res) => {
-                this.paidMemberCount = res.meta.pagination.total;
-            })
-        ]);
     }
 }

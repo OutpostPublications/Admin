@@ -1,16 +1,15 @@
 import * as Sentry from '@sentry/browser';
 import Service, {inject as service} from '@ember/service';
-import classic from 'ember-classic-decorator';
+import {TrackedArray} from 'tracked-built-ins';
 import {dasherize} from '@ember/string';
-import {A as emberA, isArray as isEmberArray} from '@ember/array';
-import {filter} from '@ember/object/computed';
-import {get, set} from '@ember/object';
 import {htmlSafe} from '@ember/template';
+import {isArray} from '@ember/array';
 import {isBlank} from '@ember/utils';
 import {
     isMaintenanceError,
     isVersionMismatchError
 } from 'ghost-admin/services/ajax';
+import {tracked} from '@glimmer/tracking';
 
 // Notification keys take the form of "noun.verb.message", eg:
 //
@@ -21,73 +20,89 @@ import {
 // to avoid stacking of multiple error messages whilst leaving enough
 // specificity to re-use keys for i18n lookups
 
-@classic
+// Rather than showing raw JS error messages to users we want to show a generic one.
+// This list is used to check obj.name in `showApiError(obj)` as the first line
+// of defence, then at the lowest `handleNotification(msg)` level we check the
+// first word of the message text as a fallback in case we get JS error messages
+// from the API. If there's a match we show the generic message.
+const GENERIC_ERROR_NAMES = [
+    'AggregateError',
+    'EvalError',
+    'RangeError',
+    'ReferenceError',
+    'SyntaxError',
+    'TypeError',
+    'URIError'
+];
+
+export const GENERIC_ERROR_MESSAGE = 'An unexpected error occurred, please try again.';
+
 export default class NotificationsService extends Service {
-    delayedNotifications = null;
-    content = null;
-
-    init() {
-        super.init(...arguments);
-        this.delayedNotifications = emberA();
-        this.content = emberA();
-    }
-
     @service config;
     @service upgradeStatus;
 
-    @filter('content', function (notification) {
-        let status = get(notification, 'status');
-        return status === 'alert';
-    })
-        alerts;
+    @tracked delayedNotifications = new TrackedArray([]);
+    @tracked content = new TrackedArray([]);
 
-    @filter('content', function (notification) {
-        let status = get(notification, 'status');
-        return status === 'notification';
-    })
-        notifications;
+    get alerts() {
+        return this.content.filter(n => n.status === 'alert');
+    }
 
-    handleNotification(message, delayed) {
-        // If this is an alert message from the server, treat it as html safe
-        if (message.constructor.modelName === 'notification' && message.get('status') === 'alert') {
-            message.set('message', htmlSafe(message.get('message')));
+    get notifications() {
+        return this.content.filter(n => n.status === 'notification');
+    }
+
+    handleNotification(message, delayed = false) {
+        const wordRegex = /[a-z]+/igm;
+        const wordMatches = (message.message.string || message.message).matchAll(wordRegex);
+
+        for (const wordMatch of wordMatches) {
+            if (GENERIC_ERROR_NAMES.includes(wordMatch[0])) {
+                message.message = GENERIC_ERROR_MESSAGE;
+                break;
+            }
         }
 
-        if (!get(message, 'status')) {
-            set(message, 'status', 'notification');
+        // If this is an alert message from the server, treat it as html safe
+        if (message.constructor.modelName === 'notification' && message.status === 'alert') {
+            message.message = htmlSafe(message.message);
+        }
+
+        if (!message.status) {
+            message.status = 'notification';
         }
 
         // close existing duplicate alerts/notifications to avoid stacking
-        if (get(message, 'key')) {
-            this._removeItems(get(message, 'status'), get(message, 'key'));
+        if (message.key) {
+            this._removeItems(message.status, message.key);
         }
 
         // close existing alerts/notifications which have the same text to avoid stacking
-        let newText = get(message, 'message').string || get(message, 'message');
-        this.set('content', this.content.reject((notification) => {
-            let existingText = get(notification, 'message').string || get(notification, 'message');
+        let newText = message.message.string || message.message;
+        this.content = new TrackedArray(this.content.reject((notification) => {
+            let existingText = notification.message.string || notification.message;
             return existingText === newText;
         }));
 
         if (!delayed) {
-            this.content.pushObject(message);
+            this.content.push(message);
         } else {
-            this.delayedNotifications.pushObject(message);
+            this.delayedNotifications.push(message);
         }
     }
 
-    showAlert(message, options) {
+    showAlert(message, options = {}) {
         options = options || {};
 
         if (!options.isApiError) {
             if (this.config.get('sentry_dsn')) {
                 // message could be a htmlSafe object rather than a string
-                const displayedMessage = get(message, 'string') || message;
+                const displayedMessage = message.string || message;
 
                 const contexts = {
                     ghost: {
                         displayed_message: displayedMessage,
-                        ghost_error_code: get(options, 'ghostErrorCode'),
+                        ghost_error_code: options.ghostErrorCode,
                         full_error: message,
                         source: 'showAlert'
                     }
@@ -136,7 +151,7 @@ export default class NotificationsService extends Service {
         }
 
         // loop over ember-ajax errors object
-        if (resp && resp.payload && isEmberArray(resp.payload.errors)) {
+        if (isArray(resp?.payload?.errors)) {
             return resp.payload.errors.forEach((error) => {
                 this._showAPIError(error, options);
             });
@@ -152,23 +167,25 @@ export default class NotificationsService extends Service {
         // if possible use the title to get a unique key
         // - we only show one alert for each key so if we get multiple errors
         //   only the last one will be shown
-        if (!options.key && !isBlank(get(resp, 'title'))) {
-            options.key = dasherize(get(resp, 'title'));
+        if (!options.key && !isBlank(resp?.title)) {
+            options.key = dasherize(resp?.title);
         }
         options.key = ['api-error', options.key].compact().join('.');
 
         let msg = options.defaultErrorText || 'There was a problem on the server, please try again.';
 
-        if (resp instanceof String) {
+        if (resp?.name && GENERIC_ERROR_NAMES.includes(resp.name)) {
+            msg = GENERIC_ERROR_MESSAGE;
+        } else if (resp instanceof String) {
             msg = resp;
-        } else if (!isBlank(get(resp, 'detail'))) {
+        } else if (!isBlank(resp?.detail)) {
             msg = resp.detail;
-        } else if (!isBlank(get(resp, 'message'))) {
+        } else if (!isBlank(resp?.message)) {
             msg = resp.message;
         }
 
-        if (!isBlank(get(resp, 'context'))) {
-            msg = `${msg} ${get(resp, 'context')}`;
+        if (!isBlank(resp?.context)) {
+            msg = `${msg} ${resp.context}`;
         }
 
         if (this.config.get('sentry_dsn')) {
@@ -177,7 +194,7 @@ export default class NotificationsService extends Service {
             Sentry.captureException(reportedError, {
                 contexts: {
                     ghost: {
-                        ghost_error_code: get(resp, 'ghostErrorCode'),
+                        ghost_error_code: resp.ghostErrorCode,
                         displayed_message: msg,
                         full_error: resp,
                         source: 'showAPIError'
@@ -196,9 +213,9 @@ export default class NotificationsService extends Service {
 
     displayDelayed() {
         this.delayedNotifications.forEach((message) => {
-            this.content.pushObject(message);
+            this.content.push(message);
         });
-        this.set('delayedNotifications', []);
+        this.delayedNotifications = new TrackedArray([]);
     }
 
     closeNotification(notification) {
@@ -223,7 +240,7 @@ export default class NotificationsService extends Service {
     }
 
     clearAll() {
-        this.content.clear();
+        this.content = new TrackedArray([]);
     }
 
     _removeItems(status, key) {
@@ -234,14 +251,14 @@ export default class NotificationsService extends Service {
             let escapedKeyBase = keyBase.replace('.', '\\.');
             let keyRegex = new RegExp(`^${escapedKeyBase}`);
 
-            this.set('content', this.content.reject((item) => {
-                let itemKey = get(item, 'key');
-                let itemStatus = get(item, 'status');
+            this.content = new TrackedArray(this.content.reject((item) => {
+                let itemKey = item.key;
+                let itemStatus = item.status;
 
                 return itemStatus === status && (itemKey && itemKey.match(keyRegex));
             }));
         } else {
-            this.set('content', this.content.rejectBy('status', status));
+            this.content = new TrackedArray(this.content.rejectBy('status', status));
         }
     }
 

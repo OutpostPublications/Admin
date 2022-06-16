@@ -104,7 +104,7 @@ export default Model.extend(Comparable, ValidationEngine, {
     updatedBy: attr('number'),
     url: attr('string'),
     uuid: attr('string'),
-    emailRecipientFilter: attr('members-segment-string', {defaultValue: null}),
+    emailSegment: attr('members-segment-string', {defaultValue: null}),
     emailOnly: attr('boolean', {defaultValue: false}),
 
     featureImage: attr('string'),
@@ -145,7 +145,7 @@ export default Model.extend(Comparable, ValidationEngine, {
     ogTitleScratch: boundOneWay('ogTitle'),
     twitterDescriptionScratch: boundOneWay('twitterDescription'),
     twitterTitleScratch: boundOneWay('twitterTitle'),
-    tiers: attr('member-product'),
+    tiers: attr('member-tier'),
     emailSubjectScratch: boundOneWay('emailSubject'),
 
     isPublished: equal('status', 'published'),
@@ -160,8 +160,8 @@ export default Model.extend(Comparable, ValidationEngine, {
     hasEmail: computed('email', 'emailOnly', function () {
         return this.email !== null || this.emailOnly;
     }),
-    willEmail: computed('emailRecipientFilter', function () {
-        return this.emailRecipientFilter !== null;
+    willEmail: computed('isScheduled', 'newsletter', 'email', function () {
+        return this.isScheduled && !!this.newsletter && !this.email;
     }),
 
     previewUrl: computed('uuid', 'ghostPaths.url', 'config.blogUrl', function () {
@@ -192,12 +192,20 @@ export default Model.extend(Comparable, ValidationEngine, {
             }
             if (this.visibility === 'tiers' && this.tiers) {
                 let filter = this.tiers.map((tier) => {
-                    return `product:${tier.slug}`;
+                    return `tier:${tier.slug}`;
                 }).join(',');
                 return filter;
             }
             return this.visibility;
         }
+    }),
+
+    fullRecipientFilter: computed('newsletter.recipientFilter', 'emailSegment', function () {
+        if (!this.newsletter) {
+            return this.emailSegment;
+        }
+
+        return `${this.newsletter.recipientFilter}+(${this.emailSegment})`;
     }),
 
     // check every second to see if we're past the scheduled time

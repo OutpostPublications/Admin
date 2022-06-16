@@ -42,12 +42,13 @@ Router.map(function () {
     this.route('settings');
     this.route('settings.general', {path: '/settings/general'});
     this.route('settings.membership', {path: '/settings/members'});
-    this.route('settings.members-email', {path: '/settings/members-email'});
     this.route('settings.code-injection', {path: '/settings/code-injection'});
-
-    this.route('settings.members-email-labs', {path: '/settings/members-email-labs'}, function () {
-        this.route('new-newsletter', {path: '/newsletters/new'});
-        this.route('edit-newsletter', {path: '/newsletters/:newsletter_id'});
+    
+    // redirect from old /settings/members-email to /settings/newsletters
+    this.route('settings.members-email', {path: '/settings/members-email'});
+    this.route('settings.newsletters', {path: '/settings/newsletters'}, function () {
+        this.route('new-newsletter', {path: 'new'});
+        this.route('edit-newsletter', {path: ':newsletter_id'});
     });
 
     this.route('settings.design', {path: '/settings/design'}, function () {

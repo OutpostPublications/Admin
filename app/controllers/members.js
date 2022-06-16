@@ -161,10 +161,7 @@ export default class MembersController extends Controller {
     }
 
     get filterColumns() {
-        const defaultColumns = ['name', 'email', 'email_open_rate', 'created_at'];
-        if (this.feature.get('membersTableStatus')) {
-            defaultColumns.push('status', 'product');
-        }
+        const defaultColumns = ['name', 'email', 'email_open_rate', 'created_at', 'status', 'tier'];
         const availableFilters = this.filters.length ? this.filters : this.softFilters;
         return availableFilters.map((filter) => {
             return filter.type;
@@ -180,7 +177,7 @@ export default class MembersController extends Controller {
             'subscriptions.status': 'Subscription Status',
             'subscriptions.start_date': 'Paid start date',
             'subscriptions.current_period_end': 'Next billing date',
-            product: 'Membership tier'
+            tier: 'Membership tier'
         };
         return this.filterColumns.map((d) => {
             return {
@@ -190,10 +187,10 @@ export default class MembersController extends Controller {
         });
     }
 
-    includeProductQuery() {
+    includeTierQuery() {
         const availableFilters = this.filters.length ? this.filters : this.softFilters;
         return availableFilters.some((f) => {
-            return f.type === 'product';
+            return f.type === 'tier';
         });
     }
 
@@ -408,7 +405,7 @@ export default class MembersController extends Controller {
                 extraFilters: [`created_at:<='${moment.utc(this._startDate).format('YYYY-MM-DD HH:mm:ss')}'`]
             });
             const order = orderParam ? `${orderParam} desc` : `created_at desc`;
-            const includes = ['labels', 'products'];
+            const includes = ['labels', 'tiers'];
 
             query = Object.assign({
                 include: includes.join(','),

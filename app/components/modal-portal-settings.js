@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import ModalComponent from 'ghost-admin/components/modal-base';
 import copyTextToClipboard from 'ghost-admin/utils/copy-text-to-clipboard';
 import {action, computed} from '@ember/object';
@@ -24,7 +23,8 @@ export default ModalComponent.extend({
     showLinksPage: false,
     showLeaveSettingsModal: false,
     isPreloading: true,
-    changedProducts: null,
+    changedTiers: null,
+    openSection: null,
     portalPreviewGuid: 'modal-portal-settings',
 
     confirm() {},
@@ -49,19 +49,19 @@ export default ModalComponent.extend({
         return `data-portal`;
     }),
 
-    portalPreviewUrl: computed('page', 'model.products.[]', 'changedProducts.[]', 'membersUtils.{isFreeChecked,isMonthlyChecked,isYearlyChecked}', 'settings.{portalName,portalButton,portalButtonIcon,portalButtonSignupText,portalButtonStyle,accentColor,portalPlans.[]}', function () {
+    portalPreviewUrl: computed('page', 'model.tiers.[]', 'changedTiers.[]', 'membersUtils.{isFreeChecked,isMonthlyChecked,isYearlyChecked}', 'settings.{portalName,portalButton,portalButtonIcon,portalButtonSignupText,portalButtonStyle,accentColor,portalPlans.[]}', function () {
         const options = this.getProperties(['page']);
-        options.portalProducts = this.model.products?.filter((product) => {
-            return product.get('visibility') === 'public'
-                && product.get('active') === true
-                && product.get('type') === 'paid';
-        }).map((product) => {
-            return product.id;
+        options.portalTiers = this.model.tiers?.filter((tier) => {
+            return tier.get('visibility') === 'public'
+                && tier.get('active') === true
+                && tier.get('type') === 'paid';
+        }).map((tier) => {
+            return tier.id;
         });
-        const freeProduct = this.model.products?.find((product) => {
-            return product.type === 'free';
+        const freeTier = this.model.tiers?.find((tier) => {
+            return tier.type === 'free';
         });
-        options.isFreeChecked = freeProduct?.visibility === 'public';
+        options.isFreeChecked = freeTier?.visibility === 'public';
         return this.membersUtils.getPortalPreviewUrl(options);
     }),
 
@@ -85,47 +85,36 @@ export default ModalComponent.extend({
         const allowedPlans = this.settings.get('portalPlans') || [];
         return (this.settings.get('membersSignupAccess') === 'all' && allowedPlans.includes('free'));
     }),
-    isMonthlyChecked: computed('settings.portalPlans.[]', 'isStripeConfigured', function () {
+    isMonthlyChecked: computed('settings.portalPlans.[]', 'membersUtils.paidMembersEnabled', function () {
         const allowedPlans = this.settings.get('portalPlans') || [];
-        return (this.membersUtils.isStripeEnabled && allowedPlans.includes('monthly'));
+        return (this.membersUtils.paidMembersEnabled && allowedPlans.includes('monthly'));
     }),
-    isYearlyChecked: computed('settings.portalPlans.[]', 'isStripeConfigured', function () {
+    isYearlyChecked: computed('settings.portalPlans.[]', 'membersUtils.paidMembersEnabled', function () {
         const allowedPlans = this.settings.get('portalPlans') || [];
-        return (this.membersUtils.isStripeEnabled && allowedPlans.includes('yearly'));
+        return (this.membersUtils.paidMembersEnabled && allowedPlans.includes('yearly'));
     }),
-    products: computed('model.products.[]', 'changedProducts.[]', 'isPreloading', function () {
-        const paidProducts = this.model.products?.filter(product => product.type === 'paid' && product.active === true);
-        if (this.isPreloading || !paidProducts?.length) {
+    tiers: computed('model.tiers.[]', 'changedTiers.[]', 'isPreloading', function () {
+        const paidTiers = this.model.tiers?.filter(tier => tier.type === 'paid' && tier.active === true);
+        if (this.isPreloading || !paidTiers?.length) {
             return [];
         }
 
-        const products = paidProducts.map((product) => {
+        const tiers = paidTiers.map((tier) => {
             return {
-                id: product.id,
-                name: product.name,
-                checked: product.visibility === 'public'
+                id: tier.id,
+                name: tier.name,
+                checked: tier.visibility === 'public'
             };
         });
-        return products;
+        return tiers;
     }),
 
-    showPortalTiers: computed('products', 'feature.multipleProducts', function () {
-        if (this.feature.get('multipleProducts')) {
-            return true;
-        }
-        return false;
-    }),
-
-    showPortalPrices: computed('products', 'feature.multipleProducts', function () {
-        if (!this.feature.get('multipleProducts')) {
-            return true;
-        }
-
-        const visibleProducts = this.model.products?.filter((product) => {
-            return product.visibility === 'public' && product.type === 'paid';
+    showPortalPrices: computed('tiers', function () {
+        const visibleTiers = this.model.tiers?.filter((tier) => {
+            return tier.visibility === 'public' && tier.type === 'paid';
         });
 
-        return !!visibleProducts?.length;
+        return !!visibleTiers?.length;
     }),
 
     init() {
@@ -135,8 +124,18 @@ export default ModalComponent.extend({
             {name: 'icon-only', label: 'Icon only'},
             {name: 'text-only', label: 'Text only'}
         ];
+        this.availablePages = [{
+            name: 'signup',
+            label: 'Signup'
+        }, {
+            name: 'accountHome',
+            label: 'Account'
+        }, {
+            name: 'links',
+            label: 'Links'
+        }];
         this.iconExtensions = ICON_EXTENSIONS;
-        this.changedProducts = [];
+        this.changedTiers = [];
         this.set('supportAddress', this.parseEmailAddress(this.settings.get('membersSupportAddress')));
     },
 
@@ -152,8 +151,8 @@ export default ModalComponent.extend({
         togglePlan(plan, event) {
             this.updateAllowedPlan(plan, event.target.checked);
         },
-        toggleProduct(productId, event) {
-            this.updateAllowedProduct(productId, event.target.checked);
+        toggleTier(tierId, event) {
+            this.updateAllowedTier(tierId, event.target.checked);
         },
         togglePortalButton(showButton) {
             this.settings.set('portalButton', showButton);
@@ -161,6 +160,13 @@ export default ModalComponent.extend({
 
         togglePortalName(showSignupName) {
             this.settings.set('portalName', showSignupName);
+        },
+        toggleSection(section) {
+            if (this.get('openSection') === section) {
+                this.set('openSection', null);
+            } else {
+                this.set('openSection', section);
+            }
         },
 
         confirm() {
@@ -173,12 +179,12 @@ export default ModalComponent.extend({
         },
 
         switchPreviewPage(page) {
-            if (page === 'links') {
+            if (page.name === 'links') {
                 this.set('showLinksPage', true);
                 this.set('page', '');
             } else {
                 this.set('showLinksPage', false);
-                this.set('page', page);
+                this.set('page', page.name);
             }
         },
 
@@ -215,12 +221,7 @@ export default ModalComponent.extend({
          * @param  {MouseEvent} event - MouseEvent fired by the button click
          */
         triggerFileDialog(event) {
-            // simulate click to open file dialog
-            // using jQuery because IE11 doesn't support MouseEvent
-            $(event.target)
-                .closest('.gh-setting-action')
-                .find('input[type="file"]')
-                .click();
+            event?.target.closest('.gh-setting-action')?.querySelector('input[type="file"]')?.click();
         },
 
         deleteCustomIcon() {
@@ -236,9 +237,9 @@ export default ModalComponent.extend({
             this.set('showLeaveSettingsModal', false);
         },
 
-        openStripeSettings() {
+        openStripeConnect() {
             this.isWaitingForStripeConnection = true;
-            this.model.openStripeSettings();
+            this.model.openStripeConnect();
         },
 
         leaveSettings() {
@@ -270,33 +271,33 @@ export default ModalComponent.extend({
     updateAllowedPlan(plan, isChecked) {
         const portalPlans = this.settings.get('portalPlans') || [];
         const allowedPlans = [...portalPlans];
-        const freeProduct = this.model.products.find(p => p.type === 'free');
+        const freeTier = this.model.tiers.find(p => p.type === 'free');
 
         if (!isChecked) {
             this.settings.set('portalPlans', allowedPlans.filter(p => p !== plan));
             if (plan === 'free') {
-                freeProduct.set('visibility', 'none');
+                freeTier.set('visibility', 'none');
             }
         } else {
             allowedPlans.push(plan);
             this.settings.set('portalPlans', allowedPlans);
             if (plan === 'free') {
-                freeProduct.set('visibility', 'public');
+                freeTier.set('visibility', 'public');
             }
         }
     },
 
-    updateAllowedProduct(productId, isChecked) {
-        const product = this.model.products.find(p => p.id === productId);
+    updateAllowedTier(tierId, isChecked) {
+        const tier = this.model.tiers.find(p => p.id === tierId);
         if (!isChecked) {
-            product.set('visibility', 'none');
+            tier.set('visibility', 'none');
         } else {
-            product.set('visibility', 'public');
+            tier.set('visibility', 'public');
         }
-        let portalProducts = this.model.products.filter((p) => {
+        let portalTiers = this.model.tiers.filter((p) => {
             return p.visibility === 'public';
         }).map(p => p.id);
-        this.set('changedProducts', portalProducts);
+        this.set('changedTiers', portalTiers);
     },
 
     _validateSignupRedirect(url, type) {
@@ -360,11 +361,11 @@ export default ModalComponent.extend({
 
         // Save tier visibility if changed
         yield Promise.all(
-            this.model.products.filter((product) => {
-                const changedAttrs = product.changedAttributes();
+            this.model.tiers.filter((tier) => {
+                const changedAttrs = tier.changedAttributes();
                 return !!changedAttrs.visibility;
-            }).map((product) => {
-                return product.save();
+            }).map((tier) => {
+                return tier.save();
             })
         );
 
@@ -376,14 +377,14 @@ export default ModalComponent.extend({
     updateSupportAddress: task(function* () {
         let url = this.get('ghostPaths.url').api('/settings/members/email');
         try {
-            const response = yield this.ajax.post(url, {
+            yield this.ajax.post(url, {
                 data: {
                     email: this.supportAddress,
                     type: 'supportAddressUpdate'
                 }
             });
-            // this.toggleProperty('showSupportAddressConfirmation');
-            return response;
+
+            return true;
         } catch (e) {
             // Failed to send email, retry
             return false;

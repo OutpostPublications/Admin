@@ -7,9 +7,16 @@ export default class MembersUtilsService extends Service {
     @service store;
 
     get isMembersEnabled() {
-        return this.settings.get('membersSignupAccess') !== 'none';
+        return this.settings.get('membersEnabled');
     }
 
+    get paidMembersEnabled() {
+        return this.settings.get('paidMembersEnabled');
+    }
+
+    /**
+     * Note: always use paidMembersEnabled! Only use this getter for the Stripe Connection UI.
+     */
     get isStripeEnabled() {
         const stripeDirect = this.config.get('stripeDirect');
 
@@ -89,14 +96,14 @@ export default class MembersUtilsService extends Service {
             monthlyPrice,
             yearlyPrice,
             portalPlans = this.settings.get('portalPlans'),
-            portalProducts,
+            portalTiers,
             currency,
             membersSignupAccess = this.settings.get('membersSignupAccess')
         } = overrides;
 
-        const tiers = this.store.peekAll('product') || [];
+        const tiers = this.store.peekAll('tier') || [];
 
-        portalProducts = portalProducts || tiers.filter((t) => {
+        portalTiers = portalTiers || tiers.filter((t) => {
             return t.visibility === 'public' && t.type === 'paid';
         }).map(t => t.id);
 
@@ -121,8 +128,8 @@ export default class MembersUtilsService extends Service {
             settingsParam.append('portalPrices', encodeURIComponent(portalPlans));
         }
 
-        if (portalProducts && this.feature.get('multipleProducts')) {
-            settingsParam.append('portalProducts', encodeURIComponent(portalProducts));
+        if (portalTiers) {
+            settingsParam.append('portalProducts', encodeURIComponent(portalTiers));
         }
 
         if (this.settings.get('accentColor') === '' || this.settings.get('accentColor')) {

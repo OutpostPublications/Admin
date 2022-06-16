@@ -1,10 +1,11 @@
-import {PublishOptions} from '../components/editor-labs/publish-management';
+import PublishOptions from '../utils/publish-options';
 import {Resource} from 'ember-could-get-used-to-this';
 import {inject as service} from '@ember/service';
 import {tracked} from '@glimmer/tracking';
 
 export default class PublishOptionsResource extends Resource {
     @service config;
+    @service limit;
     @service session;
     @service settings;
     @service store;
@@ -32,10 +33,11 @@ export default class PublishOptionsResource extends Resource {
     }
 
     _createPublishOptions(post) {
-        const {config, settings, store} = this;
+        const {config, limit, settings, store} = this;
 
         return new PublishOptions({
             config,
+            limit,
             post,
             settings,
             store,

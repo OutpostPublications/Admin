@@ -56,21 +56,8 @@ export default class FeatureService extends Service {
         nightShift;
 
     // labs flags
-    @feature('multipleProducts') multipleProducts;
-    @feature('dashboardV5') dashboardV5;
-    @feature('oauthLogin') oauthLogin;
-    @feature('membersActivity') membersActivity;
     @feature('urlCache') urlCache;
     @feature('beforeAfterCard') beforeAfterCard;
-    @feature('multipleNewsletters') multipleNewsletters;
-    @feature('multipleNewslettersUI') multipleNewslettersUI;
-    @feature('tweetGridCard') tweetGridCard;
-    @feature('improvedOnboarding') improvedOnboarding;
-    @feature('tierWelcomePages') tierWelcomePages;
-    @feature('tierName') tierName;
-    @feature('membersTableStatus') membersTableStatus;
-    @feature('selectablePortalLinks') selectablePortalLinks;
-    @feature('publishingFlow') publishingFlow;
 
     _user = null;
 

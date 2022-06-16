@@ -1,7 +1,6 @@
 import classic from 'ember-classic-decorator';
 import {inject as service} from '@ember/service';
 /* eslint-disable ghost/ember/alias-model-in-controller */
-import $ from 'jquery';
 import Controller from '@ember/controller';
 import RSVP from 'rsvp';
 import config from 'ghost-admin/config/environment';
@@ -10,7 +9,7 @@ import {
     isRequestEntityTooLargeError,
     isUnsupportedMediaTypeError
 } from 'ghost-admin/services/ajax';
-import {action, set} from '@ember/object';
+import {action} from '@ember/object';
 import {isBlank} from '@ember/utils';
 import {isArray as isEmberArray} from '@ember/array';
 import {run} from '@ember/runloop';
@@ -50,7 +49,6 @@ export default class LabsController extends Controller {
     importSuccessful = false;
     showDeleteAllModal = false;
     showEarlyAccessModal = false;
-    showEnableTiersModal = false;
     submitting = false;
     uploadButtonText = 'Import';
     importMimeType = null;
@@ -59,7 +57,6 @@ export default class LabsController extends Controller {
     yamlExtension = null;
     yamlMimeType = null;
     yamlAccept = null;
-    isOAuthConfigurationOpen = false;
 
     init() {
         super.init(...arguments);
@@ -145,11 +142,6 @@ export default class LabsController extends Controller {
     }
 
     @action
-    async saveOAuthSettings() {
-        await this.settings.save();
-    }
-
-    @action
     toggleDeleteAllModal() {
         this.toggleProperty('showDeleteAllModal');
     }
@@ -157,23 +149,6 @@ export default class LabsController extends Controller {
     @action
     toggleEarlyAccessModal() {
         this.toggleProperty('showEarlyAccessModal');
-    }
-
-    @action
-    toggleEnableTiersModal() {
-        this.toggleProperty('showEnableTiersModal');
-    }
-
-    @action
-    async toggleIsOAuthEnabled() {
-        if (this.isOAuthEnabled) {
-            this.settings.set('oauthClientId', '');
-            this.settings.set('oauthClientSecret', '');
-            set(this, 'isOAuthConfigurationOpen', false);
-            await this.settings.save();
-        } else {
-            set(this, 'isOAuthConfigurationOpen', true);
-        }
     }
 
     /**
@@ -185,11 +160,7 @@ export default class LabsController extends Controller {
     @action
     triggerFileDialog(event) {
         // simulate click to open file dialog
-        // using jQuery because IE11 doesn't support MouseEvent
-        $(event.target)
-            .closest('.gh-setting-action')
-            .find('input[type="file"]')
-            .click();
+        event?.target.closest('.gh-setting-action')?.querySelector('input[type="file"]')?.click();
     }
 
     // TODO: convert to ember-concurrency task

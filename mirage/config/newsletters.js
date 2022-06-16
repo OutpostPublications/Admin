@@ -1,4 +1,6 @@
 import {camelize} from '@ember/string';
+import {dasherize} from '@ember/string';
+import {isBlank} from '@ember/utils';
 import {paginatedResponse} from '../utils';
 
 export default function mockNewsletters(server) {
@@ -11,6 +13,10 @@ export default function mockNewsletters(server) {
         // sender email can't be set without verification
         const senderEmail = attrs.senderEmail;
         attrs.senderEmail = null;
+
+        if (isBlank(attrs.slug) && !isBlank(attrs.name)) {
+            attrs.slug = dasherize(attrs.name);
+        }
 
         const newsletter = newsletters.create(attrs);
 
@@ -42,7 +48,8 @@ export default function mockNewsletters(server) {
 
         // sender email can't be changed without verification
         if (newSenderEmail && newSenderEmail !== previousSenderEmail) {
-            attrs.senderEmail = previousSenderEmail;
+            // It doesn't correctly return to the previous email if previousSenderEmail is undefined
+            attrs.senderEmail = previousSenderEmail === undefined ? null : previousSenderEmail;
         }
 
         newsletter.update(attrs);
@@ -62,7 +69,7 @@ export default function mockNewsletters(server) {
             };
             const token = btoa(JSON.stringify(tokenData));
             const baseUrl = window.location.href.replace(window.location.hash, '');
-            const verifyUrl = `${baseUrl}settings/members-email-labs/?verifyEmail=${token}`;
+            const verifyUrl = `${baseUrl}settings/newsletters/?verifyEmail=${token}`;
             // eslint-disable-next-line
             console.warn('Verification email sent. Mocked verification URL:', verifyUrl);
         }

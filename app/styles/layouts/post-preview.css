@@ -8,42 +8,52 @@
     justify-content: center;
     align-items: center;
     flex-shrink: 0;
-    min-height: 72px;
+    height: 34px;
     overflow: hidden;
-    margin: 0;
-    padding: 18px 32px 16px;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
+    margin: 30px;
     background: var(--white);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
 }
 
-.gh-post-preview-header h2 {
-    flex: 1;
-    margin: 0;
-    margin-right: auto;
+.gh-post-preview-header .left {
+    position: absolute;
+    left: 0;
 }
 
-.gh-post-preview-header-border {
-    border-bottom: 1px solid var(--whitegrey);
-}
-
-.gh-post-preview-btn-group {
+.gh-post-preview-header .right {
+    position: absolute;
+    right: 0;
     display: flex;
-    flex-grow: 1;
-    justify-content: center;
+}
+
+@media (max-width: 1024px) {
+    .gh-post-preview-header {
+        z-index: 100;
+        height: 64px;
+        margin: 0;
+        padding: 0;
+        padding-left: 15px;
+        background-color: var(--white);
+        border-radius: 0;
+    }
+
+    .gh-post-preview-header .left {
+        position: absolute;
+        left: 15px;
+    }
+}
+
+.gh-post-preview-btn-group .gh-btn-group {
+    background: transparent;
+}
+
+.gh-post-preview-btn-group .gh-btn-group span {
+    height: 34px;
+    line-height: 34px;
+    box-shadow: none;
 }
 
 .gh-post-preview-btn-group button {
     width: 64px;
-}
-
-.gh-post-preview-btn-group .gh-btn-group span {
-    height: 36px;
-    line-height: 34px;
-    border-radius: 3px;
 }
 
 .gh-post-preview-mode svg {
@@ -53,33 +63,91 @@
     fill: var(--midgrey);
 }
 
-.gh-btn-external {
-    margin-left: 2rem;
+.gh-publish-preview-newtab {
+    display: inherit;
+    margin-top: 2px;
+    margin-left: 1.6rem;
 }
 
-.gh-btn-external svg {
-    width: 12px;
+.gh-publish-preview-newtab svg {
+    width: 14px;
+    height: 16px;
     fill: var(--darkgrey);
 }
 
-.gh-btn-external svg path {
-    stroke: none;
+.gh-publish-preview-newtab svg path {
+    stroke-width: .8px;
+    stroke: var(--darkgrey);
 }
+
+/* Preview animation */
+
+.gh-post-preview-container {
+    opacity: 1;
+}
+
+.gh-post-preview-container.fade-in {
+    transform-origin: center;
+    animation: fade-in-pulse .35s forwards cubic-bezier(.8,.02,.45,.91);
+}
+.epm-out .gh-post-preview-container.fade-in {
+    transform-origin: center;
+    animation: fade-out-pulse .35s forwards cubic-bezier(.8,.02,.45,.91);
+}
+
 
 /* Browser preview */
+
 .gh-post-preview-browser-container {
-    position: relative;
     display: flex;
-    flex-grow: 1;
-    overflow: auto;
-    margin: 0;
-    background: var(--whitegrey-l1);
+    flex-direction: column;
+    height: 100%;
+    margin: 0 40px 40px;
+    border-radius: 3px !important;
+    box-shadow:
+        0 0 0 1px rgba(0,0,0,0.02),
+        0 2.8px 2.2px rgba(0, 0, 0, 0.02),
+        0 6.7px 5.3px rgba(0, 0, 0, 0.028),
+        0 12.5px 10px rgba(0, 0, 0, 0.035),
+        0 22.3px 17.9px rgba(0, 0, 0, 0.042),
+        0 41.8px 33.4px rgba(0, 0, 0, 0.05),
+        0 100px 80px rgba(0, 0, 0, 0.07);
+    ;
 }
 
-.gh-post-preview-browser-container iframe {
+.gh-post-preview-browser-container .gh-pe-iframe {
     width: 100%;
-    /* height: 100%; */
+    height: 100%;
     border: none;
+}
+
+.gh-post-preview-browser-container .tabs div {
+    width: 360px;
+    color: var(--middarkgrey);
+    font-weight: 400;
+}
+
+.gh-post-preview-url {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 32px;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--darkgrey);
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: .2px;
+}
+
+.gh-post-preview-url .check {
+    width: 14px;
+    margin-top: -1px;
+}
+
+.gh-post-preview-url .check path {
+    stroke-width: 2.4px;
+    stroke: var(--green-d1);
 }
 
 .gh-post-preview-url-container {
@@ -124,7 +192,7 @@
 
 /* Mobile preview */
 .gh-post-preview-iframe {
-    transform: scale(0.8);
+    transform: scale(0.84);
     transform-origin: 0 0;
     width: 361px;
     height: 786px;
@@ -140,11 +208,11 @@
 /* Email preview */
 .gh-post-preview-email-container {
     position: relative;
-    height: calc(100vh - 135px);
+    height: calc(100vh - 94px);
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: var(--whitegrey-l1);
+    background: var(--white);
     padding: 30px 30px 40px;
     overflow: auto;
 }
@@ -176,14 +244,23 @@
     width: 100%;
 }
 
+.gh-post-preview-email-test {
+    display: flex;
+    width: 740px;
+}
+
 .gh-post-preview-email-input {
     width: 100%;
-    max-width: 280px;
 }
 
 .gh-post-preview-email-input {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
+    border-right-width: 0;
+}
+
+.gh-post-preview-email-input:focus {
+    border-right-width: 1px;
 }
 
 .gh-post-preview-email-trigger,
@@ -204,13 +281,10 @@
     justify-content: center;
     flex-wrap: wrap;
     width: 100%;
-    height: 100%;
-    overflow-y: scroll;
-    padding: 3.2rem;
-    overflow-y: scroll;
-    background: var(--whitegrey-l1);
-    border-bottom-left-radius: 3px;
-    border-bottom-right-radius: 3px;
+    height: calc(100vh - 94px);
+    padding: 1rem 3.2rem 3rem;
+    background: var(--white);
+    overflow-y: auto;
 }
 
 .gh-post-preview-social-container:after {
@@ -241,9 +315,9 @@
 .gh-social-og-container {
     width: 476px;
     margin-bottom: 2.4rem;
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--whitegrey-d1);
     background: #fff;
-    border-radius: 3px;
+    border-radius: var(--border-radius);
 }
 
 @media (min-width: 1120px) {
@@ -405,8 +479,9 @@
 .gh-social-twitter-container {
     width: 591px;
     margin-bottom: 2.4rem;
-    border: 1px solid #ebeef0;
+    border: 1px solid var(--whitegrey-d1);
     background: #fff;
+    border-radius: var(--border-radius);
 }
 
 @media (min-width: 1120px) {
@@ -560,9 +635,10 @@
     width: 100%;
     max-width: 1091px;
     padding: 20px 30px;
-    border: 1px solid var(--whitegrey);
+    border: 1px solid var(--whitegrey-d1);
     font-family: Arial, sans-serif;
     background: #fff;
+    border-radius: var(--border-radius);
 }
 
 .gh-seo-preview-container svg {

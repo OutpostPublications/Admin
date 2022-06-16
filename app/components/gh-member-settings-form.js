@@ -20,16 +20,12 @@ export default class extends Component {
         this.scratchMember = this.args.scratchMember;
     }
 
-    @tracked showMemberProductModal = false;
-    @tracked productsList;
+    @tracked showMemberTierModal = false;
+    @tracked tiersList;
     @tracked newslettersList;
 
-    get canShowStripeInfo() {
-        return !this.member.get('isNew') && this.membersUtils.isStripeEnabled;
-    }
-
     get isAddComplimentaryAllowed() {
-        if (!this.membersUtils.isStripeEnabled) {
+        if (!this.membersUtils.paidMembersEnabled) {
             return false;
         }
 
@@ -37,31 +33,39 @@ export default class extends Component {
             return false;
         }
 
-        if (this.member.get('products')?.length > 0) {
+        if (this.member.get('tiers')?.length > 0) {
             return false;
         }
 
-        // complimentary subscriptions are assigned to products so it only
+        // complimentary subscriptions are assigned to tiers so it only
         // makes sense to show the "add complimentary" buttons when there's a
-        // product to assign the complimentary subscription to
-        const hasAnActivePaidProduct = !!this.productsList?.length;
+        // tier to assign the complimentary subscription to
+        const hasAnActivePaidTier = !!this.tiersList?.length;
 
-        return hasAnActivePaidProduct;
+        return hasAnActivePaidTier;
+    }
+
+    get hasSingleNewsletter() {
+        return this.newslettersList?.length === 1;
+    }
+
+    get hasMultipleNewsletters() {
+        return !!(this.newslettersList?.length > 1);
     }
 
     get isCreatingComplimentary() {
         return this.args.isSaveRunning;
     }
 
-    get products() {
+    get tiers() {
         let subscriptions = this.member.get('subscriptions') || [];
 
-        // Create the products from `subscriptions.price.product`
-        let products = subscriptions
-            .map(subscription => (subscription.tier || subscription.price.product))
+        // Create the tiers from `subscriptions.price.tier`
+        let tiers = subscriptions
+            .map(subscription => (subscription.tier || subscription.price.tier))
             .filter((value, index, self) => {
                 // Deduplicate by taking the first object by `id`
-                return typeof value.id !== 'undefined' && self.findIndex(element => (element.product_id || element.id) === (value.product_id || value.id)) === index;
+                return typeof value.id !== 'undefined' && self.findIndex(element => (element.tier_id || element.id) === (value.tier_id || value.id)) === index;
             });
 
         let subscriptionData = subscriptions.filter((sub) => {
@@ -80,13 +84,13 @@ export default class extends Component {
                 isComplimentary: !sub.id
             };
         });
-        return products.map((product) => {
-            let productSubscriptions = subscriptionData.filter((subscription) => {
-                return subscription?.price?.product?.product_id === (product.product_id || product.id);
+        return tiers.map((tier) => {
+            let tierSubscriptions = subscriptionData.filter((subscription) => {
+                return subscription?.price?.tier?.tier_id === (tier.tier_id || tier.id);
             });
             return {
-                ...product,
-                subscriptions: productSubscriptions
+                ...tier,
+                subscriptions: tierSubscriptions
             };
         });
     }
@@ -104,16 +108,20 @@ export default class extends Component {
         return null;
     }
 
-    get isStripeConnected() {
-        return this.settings.get('stripeConnectAccountId');
+    @action
+    updateNewsletterPreference(event) {
+        if (!event.target.checked) {
+            this.member.set('newsletters', []);
+        } else if (this.newslettersList.firstObject) {
+            const newsletter = this.newslettersList.firstObject;
+            this.member.set('newsletters', [newsletter]);
+        }
     }
 
     @action
     setup() {
-        this.fetchProducts.perform();
-        if (this.feature.get('multipleNewsletters')) {
-            this.fetchNewsletters.perform();
-        }
+        this.fetchTiers.perform();
+        this.fetchNewsletters.perform();
     }
 
     @action
@@ -132,8 +140,8 @@ export default class extends Component {
     }
 
     @action
-    closeMemberProductModal() {
-        this.showMemberProductModal = false;
+    closeMemberTierModal() {
+        this.showMemberTierModal = false;
     }
 
     @action
@@ -142,8 +150,8 @@ export default class extends Component {
     }
 
     @action
-    removeComplimentary(productId) {
-        this.removeComplimentaryTask.perform(productId);
+    removeComplimentary(tierId) {
+        this.removeComplimentaryTask.perform(tierId);
     }
 
     @action
@@ -166,20 +174,20 @@ export default class extends Component {
     }
 
     @task({drop: true})
-    *removeComplimentaryTask(productId) {
+    *removeComplimentaryTask(tierId) {
         let url = this.ghostPaths.url.api(`members/${this.member.get('id')}`);
-        let products = this.member.get('products') || [];
+        let tiers = this.member.get('tiers') || [];
 
-        const updatedProducts = products
-            .filter(product => product.id !== productId)
-            .map(product => ({id: product.id}));
+        const updatedTiers = tiers
+            .filter(tier => tier.id !== tierId)
+            .map(tier => ({id: tier.id}));
 
         let response = yield this.ajax.put(url, {
             data: {
                 members: [{
                     id: this.member.get('id'),
                     email: this.member.get('email'),
-                    products: updatedProducts
+                    tiers: updatedTiers
                 }]
             }
         });
@@ -203,8 +211,8 @@ export default class extends Component {
     }
 
     @task({drop: true})
-    *fetchProducts() {
-        this.productsList = yield this.store.query('product', {filter: 'type:paid+active:true', include: 'monthly_price,yearly_price'});
+    *fetchTiers() {
+        this.tiersList = yield this.store.query('tier', {filter: 'type:paid+active:true', include: 'monthly_price,yearly_price'});
     }
 
     @task({drop: true})

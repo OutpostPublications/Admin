@@ -13,6 +13,7 @@ export default Component.extend({
     ghostPaths: service(),
     ajax: service(),
     settings: service(),
+    membersUtils: service(),
     store: service(),
 
     topCurrencies: null,
@@ -22,10 +23,10 @@ export default Component.extend({
     _scratchStripeYearlyAmount: null,
     _scratchStripeMonthlyAmount: null,
 
+    stripeDirect: false,
+
     // passed in actions
     setStripeConnectIntegrationTokenSetting() {},
-
-    stripeDirect: reads('config.stripeDirect'),
 
     /** OLD **/
     stripeDirectPublicKey: reads('settings.stripePublishableKey'),
@@ -59,6 +60,9 @@ export default Component.extend({
     init() {
         this._super(...arguments);
 
+        // Allow disabling stripe direct keys if stripe is still enabled, while the config is disabled
+        this.updateStripeDirect();
+
         const noOfTopCurrencies = 5;
         this.set('topCurrencies', currencies.slice(0, noOfTopCurrencies).map((currency) => {
             return {
@@ -86,12 +90,6 @@ export default Component.extend({
                 options: this.currencies
             }
         ]);
-
-        if (this.stripeConnectAccountId) {
-            this.set('membersStripeOpen', false);
-        } else {
-            this.set('membersStripeOpen', true);
-        }
     },
 
     actions: {
@@ -154,11 +152,12 @@ export default Component.extend({
 
         disconnectStripeConnectIntegration() {
             this.disconnectStripeConnectIntegration.perform();
-        },
-
-        openStripeSettings() {
-            this.set('membersStripeOpen', true);
         }
+    },
+
+    updateStripeDirect() {
+        // Allow disabling stripe direct keys if stripe is still enabled, while the config is disabled
+        this.set('stripeDirect', this.get('config.stripeDirect') || (this.get('membersUtils.isStripeEnabled') && !this.get('settings.stripeConnectAccountId')));
     },
 
     validateStripePlans() {
@@ -177,7 +176,7 @@ export default Component.extend({
             const yearlyAmount = parseInt(this._scratchStripeYearlyAmount);
             const monthlyAmount = parseInt(this._scratchStripeMonthlyAmount);
             if (!yearlyAmount || yearlyAmount < 1 || !monthlyAmount || monthlyAmount < 1) {
-                const minimum = Intl.NumberFormat(this.settings.get('lang'), {
+                const minimum = Intl.NumberFormat(this.settings.get('locale'), {
                     currency: selectedCurrency.isoCode,
                     style: 'currency'
                 }).format(1);
@@ -213,10 +212,10 @@ export default Component.extend({
         if (!this.stripeConnectAccountId) {
             return;
         }
-        const url = this.get('ghostPaths.url').api('/members/hasActiveStripeSubscriptions');
+        const url = this.ghostPaths.url.api('/members/') + '?filter=status:paid&limit=0';
         const response = yield this.ajax.request(url);
 
-        if (response.hasActiveStripeSubscriptions) {
+        if (response?.meta?.pagination?.total !== 0) {
             this.set('hasActiveStripeSubscriptions', true);
             return;
         }
@@ -233,55 +232,21 @@ export default Component.extend({
         this.onDisconnected?.();
     }),
 
-    calculateDiscount(monthly, yearly) {
-        if (isNaN(monthly) || isNaN(yearly)) {
-            return 0;
-        }
-
-        return monthly ? 100 - Math.floor((yearly / 12 * 100) / monthly) : 0;
-    },
-
-    getActivePrice(prices, interval, amount, currency) {
-        return prices.find((price) => {
-            return (
-                price.active && price.amount === amount && price.type === 'recurring' &&
-                price.interval === interval && price.currency.toLowerCase() === currency.toLowerCase()
-            );
-        });
-    },
-
-    saveProduct: task(function* () {
-        const products = yield this.store.query('product', {filter: 'type:paid', include: 'monthly_price, yearly_price'});
-        this.product = products.firstObject;
-        if (this.product) {
-            const yearlyDiscount = this.calculateDiscount(5, 50);
-            this.product.set('monthlyPrice', {
-                nickname: 'Monthly',
-                amount: 500,
-                active: 1,
-                description: 'Full access',
-                currency: 'usd',
-                interval: 'month',
-                type: 'recurring'
-            });
-            this.product.set('yearlyPrice', {
-                nickname: 'Yearly',
-                amount: 5000,
-                active: 1,
-                currency: 'usd',
-                description: yearlyDiscount > 0 ? `${yearlyDiscount}% discount` : 'Full access',
-                interval: 'year',
-                type: 'recurring'
-            });
-
+    saveTier: task(function* () {
+        const tiers = yield this.store.query('tier', {filter: 'type:paid', include: 'monthly_price, yearly_price'});
+        this.tier = tiers.firstObject;
+        if (this.tier) {
+            this.tier.set('monthlyPrice', 500);
+            this.tier.set('yearlyPrice', 5000);
+            this.tier.set('currency', 'usd');
             let pollTimeout = 0;
-            /** To allow Stripe config to be ready in backend, we poll the save product request */
+            /** To allow Stripe config to be ready in backend, we poll the save tier request */
             while (pollTimeout < RETRY_PRODUCT_SAVE_MAX_POLL) {
                 yield timeout(RETRY_PRODUCT_SAVE_POLL_LENGTH);
 
                 try {
-                    const updatedProduct = yield this.product.save();
-                    return updatedProduct;
+                    const updatedTier = yield this.tier.save();
+                    return updatedTier;
                 } catch (error) {
                     if (error.payload?.errors && error.payload.errors[0].code === 'STRIPE_NOT_CONFIGURED') {
                         pollTimeout += RETRY_PRODUCT_SAVE_POLL_LENGTH;
@@ -293,7 +258,7 @@ export default Component.extend({
                 }
             }
         }
-        return this.product;
+        return this.tier;
     }),
 
     saveStripeSettings: task(function* () {
@@ -303,12 +268,11 @@ export default Component.extend({
             try {
                 let response = yield this.settings.save();
 
-                yield this.saveProduct.perform();
+                yield this.saveTier.perform();
                 this.settings.set('portalPlans', ['free', 'monthly', 'yearly']);
 
                 response = yield this.settings.save();
 
-                this.set('membersStripeOpen', false);
                 this.set('stripeConnectSuccess', true);
                 this.onConnected?.();
 
@@ -326,7 +290,9 @@ export default Component.extend({
     }).drop(),
 
     saveSettings: task(function* () {
-        return yield this.settings.save();
+        const s = yield this.settings.save();
+        this.updateStripeDirect();
+        return s;
     }).drop(),
 
     get liveStripeConnectAuthUrl() {

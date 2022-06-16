@@ -9,7 +9,7 @@ export default class SettingsMembersDefaultPostAccess extends Component {
     @tracked showSegmentError;
 
     get options() {
-        const defaultOptions = [{
+        return [{
             name: 'Public',
             description: 'All site visitors to your site, no login required',
             value: 'public',
@@ -27,21 +27,17 @@ export default class SettingsMembersDefaultPostAccess extends Component {
             value: 'paid',
             icon: 'members-paid',
             icon_color: 'pink'
+        }, {
+            name: 'Specific tier(s)',
+            description: 'Members with any of the selected tiers',
+            value: 'tiers',
+            icon: 'members-segment',
+            icon_color: 'yellow'
         }];
-        if (this.feature.get('multipleProducts')) {
-            defaultOptions.push({
-                name: 'Specific tier(s)',
-                description: 'Members with any of the selected tiers',
-                value: 'tiers',
-                icon: 'members-segment',
-                icon_color: 'yellow'
-            });
-        }
-        return defaultOptions;
     }
 
     get hasVisibilityFilter() {
-        return this.feature.get('multipleProducts') && !['public', 'members', 'paid'].includes(this.settings.get('defaultContentVisibility'));
+        return !['public', 'members', 'paid'].includes(this.settings.get('defaultContentVisibility'));
     }
 
     get visibilityTiers() {
@@ -62,11 +58,11 @@ export default class SettingsMembersDefaultPostAccess extends Component {
     @action
     setVisibility(segment) {
         if (segment) {
-            const productIds = segment?.map((product) => {
-                return product.id;
+            const tierIds = segment?.map((tier) => {
+                return tier.id;
             });
             this.settings.set('defaultContentVisibility', 'tiers');
-            this.settings.set('defaultContentVisibilityTiers', productIds);
+            this.settings.set('defaultContentVisibilityTiers', tierIds);
             this.showSegmentError = false;
         } else {
             this.settings.set('defaultContentVisibility', '');

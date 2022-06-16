@@ -4,7 +4,8 @@ import {task} from 'ember-concurrency';
 import {tracked} from '@glimmer/tracking';
 
 export default class MembersCount extends Resource {
-    @service store;
+    @service membersCountCache;
+    @service session;
 
     @tracked count = null;
 
@@ -33,7 +34,14 @@ export default class MembersCount extends Resource {
 
     @task
     *fetchMembersTask({query} = {}) {
-        const result = yield this.store.query('member', {...query, limit: 1});
-        this.count = result.meta.pagination.total;
+        // Only Admins/Owners have access to the /members/ endpoint to fetch a count.
+        // For other roles simply leave it as `null` so templates can react accordingly
+        if (!this.session.user.isAdmin) {
+            this.count = null;
+            return;
+        }
+
+        const count = yield this.membersCountCache.count(query);
+        this.count = count;
     }
 }

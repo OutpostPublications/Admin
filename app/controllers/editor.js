@@ -2,13 +2,12 @@ import ConfirmEditorLeaveModal from '../components/modals/editor/confirm-leave';
 import Controller, {inject as controller} from '@ember/controller';
 import DeletePostModal from '../components/modals/delete-post';
 import PostModel from 'ghost-admin/models/post';
-import PostPreviewModal from '../components/modals/post-preview';
 import boundOneWay from 'ghost-admin/utils/bound-one-way';
 import classic from 'ember-classic-decorator';
 import config from 'ghost-admin/config/environment';
 import isNumber from 'ghost-admin/utils/isNumber';
 import moment from 'moment';
-import {action, computed, get} from '@ember/object';
+import {action, computed} from '@ember/object';
 import {alias, mapBy} from '@ember/object/computed';
 import {capitalize} from '@ember/string';
 import {dropTask, enqueueTask, restartableTask, task, taskGroup, timeout} from 'ember-concurrency';
@@ -109,7 +108,6 @@ export default class EditorController extends Controller {
 
     shouldFocusTitle = false;
     showReAuthenticateModal = false;
-    showPostPreviewModal = false;
     showUpgradeModal = false;
     showDeleteSnippetModal = false;
     showSettingsMenu = false;
@@ -258,28 +256,6 @@ export default class EditorController extends Controller {
                 post: this.post
             });
         }
-    }
-
-    @action
-    openPostPreview(keyboardEvent) {
-        keyboardEvent?.preventDefault();
-
-        if (this.post.isDraft) {
-            this.send('openPostPreviewModal');
-        } else {
-            window.open(this.post.previewUrl, '_blank', 'noopener');
-        }
-    }
-
-    @action
-    openPostPreviewModal() {
-        this.modals.open(PostPreviewModal, {
-            post: this.post,
-            saveTask: this.saveTask,
-            hasDirtyAttributes: this.hasDirtyAttributes,
-            setEditorSaveType: this.setSaveType,
-            memberCount: this.memberCount
-        });
     }
 
     @action
@@ -445,7 +421,8 @@ export default class EditorController extends Controller {
     /* Public tasks ----------------------------------------------------------*/
 
     // separate task for autosave so that it doesn't override a manual save
-    @dropTask *autosaveTask() {
+    @dropTask
+    *autosaveTask() {
         if (!this.get('saveTask.isRunning')) {
             return yield this.saveTask.perform({
                 silent: true,
@@ -462,7 +439,7 @@ export default class EditorController extends Controller {
         let isNew = this.get('post.isNew');
         let status;
 
-        this.send('cancelAutosave');
+        this.cancelAutosave();
 
         if (options.backgroundSave && !this.hasDirtyAttributes) {
             return;
@@ -485,55 +462,13 @@ export default class EditorController extends Controller {
                     status = 'draft';
                 }
             }
-
-            // let the adapter know it should use the `?email_recipient_filter` QP when saving
-            let isPublishing = status === 'published' && !this.post.isPublished;
-            let isScheduling = status === 'scheduled' && !this.post.isScheduled;
-            if (options.sendEmailWhenPublished && (isPublishing || isScheduling)) {
-                options.adapterOptions = Object.assign({}, options.adapterOptions, {
-                    sendEmailWhenPublished: options.sendEmailWhenPublished,
-                    newsletterId: options.newsletterId
-                });
-            }
         }
 
-        // ensure we remove any blank cards when performing a full save
-        if (!options.backgroundSave) {
-            if (this._koenig) {
-                this._koenig.cleanup();
-                this.set('hasDirtyAttributes', true);
-            }
-        }
-
-        // Set the properties that are indirected
-        // set mobiledoc equal to what's in the editor but create a copy so that
-        // nested objects/arrays don't keep references which can mean that both
-        // scratch and mobiledoc get updated simultaneously
-        this.set('post.mobiledoc', JSON.parse(JSON.stringify(this.post.scratch || null)));
+        // set manually here instead of in beforeSaveTask because the
+        // new publishing flow sets the post status manually on publish
         this.set('post.status', status);
 
-        // Set a default title
-        if (!this.get('post.titleScratch').trim()) {
-            this.set('post.titleScratch', DEFAULT_TITLE);
-        }
-
-        this.set('post.title', this.get('post.titleScratch'));
-        this.set('post.customExcerpt', this.get('post.customExcerptScratch'));
-        this.set('post.footerInjection', this.get('post.footerExcerptScratch'));
-        this.set('post.headerInjection', this.get('post.headerExcerptScratch'));
-        this.set('post.metaTitle', this.get('post.metaTitleScratch'));
-        this.set('post.metaDescription', this.get('post.metaDescriptionScratch'));
-        this.set('post.ogTitle', this.get('post.ogTitleScratch'));
-        this.set('post.ogDescription', this.get('post.ogDescriptionScratch'));
-        this.set('post.twitterTitle', this.get('post.twitterTitleScratch'));
-        this.set('post.twitterDescription', this.get('post.twitterDescriptionScratch'));
-        this.set('post.emailSubject', this.get('post.emailSubjectScratch'));
-
-        if (!this.get('post.slug')) {
-            this.saveTitleTask.cancelAll();
-
-            yield this.generateSlugTask.perform();
-        }
+        yield this.beforeSaveTask.perform(options);
 
         try {
             let post = yield this._savePostTask.perform(options);
@@ -541,7 +476,6 @@ export default class EditorController extends Controller {
             post.set('statusScratch', null);
 
             if (!options.silent) {
-                this.set('showPostPreviewModal', false);
                 this._showSaveNotification(prevStatus, post.get('status'), isNew ? true : false);
             }
 
@@ -590,6 +524,50 @@ export default class EditorController extends Controller {
             }
 
             return this.post;
+        }
+    }
+
+    @task
+    *beforeSaveTask(options = {}) {
+        // ensure we remove any blank cards when performing a full save
+        if (!options.backgroundSave) {
+            if (this._koenig) {
+                this._koenig.cleanup();
+                this.set('hasDirtyAttributes', true);
+            }
+        }
+
+        // TODO: There's no need for (at least) most of these scratch values.
+        // Refactor so we're setting model attributes directly
+
+        // Set the properties that are indirected
+
+        // Set mobiledoc equal to what's in the editor but create a copy so that
+        // nested objects/arrays don't keep references which can mean that both
+        // scratch and mobiledoc get updated simultaneously
+        this.set('post.mobiledoc', JSON.parse(JSON.stringify(this.post.scratch || null)));
+
+        // Set a default title
+        if (!this.get('post.titleScratch').trim()) {
+            this.set('post.titleScratch', DEFAULT_TITLE);
+        }
+
+        this.set('post.title', this.get('post.titleScratch'));
+        this.set('post.customExcerpt', this.get('post.customExcerptScratch'));
+        this.set('post.footerInjection', this.get('post.footerExcerptScratch'));
+        this.set('post.headerInjection', this.get('post.headerExcerptScratch'));
+        this.set('post.metaTitle', this.get('post.metaTitleScratch'));
+        this.set('post.metaDescription', this.get('post.metaDescriptionScratch'));
+        this.set('post.ogTitle', this.get('post.ogTitleScratch'));
+        this.set('post.ogDescription', this.get('post.ogDescriptionScratch'));
+        this.set('post.twitterTitle', this.get('post.twitterTitleScratch'));
+        this.set('post.twitterDescription', this.get('post.twitterDescriptionScratch'));
+        this.set('post.emailSubject', this.get('post.emailSubjectScratch'));
+
+        if (!this.get('post.slug')) {
+            this.saveTitleTask.cancelAll();
+
+            yield this.generateSlugTask.perform();
         }
     }
 
@@ -672,7 +650,8 @@ export default class EditorController extends Controller {
     }
 
     // convenience method for saving the post and performing post-save cleanup
-    @task *_savePostTask(options = {}) {
+    @task
+    *_savePostTask(options = {}) {
         let {post} = this;
 
         const previousEmailOnlyValue = this.post.emailOnly;
@@ -696,6 +675,13 @@ export default class EditorController extends Controller {
             throw error;
         }
 
+        this.afterSave(post);
+
+        return post;
+    }
+
+    @action
+    afterSave(post) {
         this.notifications.closeAlerts('post.save');
 
         // remove any unsaved tags
@@ -719,11 +705,10 @@ export default class EditorController extends Controller {
         if (titlesMatch && bodiesMatch) {
             this.set('hasDirtyAttributes', false);
         }
-
-        return post;
     }
 
-    @task *saveTitleTask() {
+    @task
+    *saveTitleTask() {
         let post = this.post;
         let currentTitle = post.get('title');
         let newTitle = post.get('titleScratch').trim();
@@ -748,7 +733,8 @@ export default class EditorController extends Controller {
         this.ui.updateDocumentTitle();
     }
 
-    @enqueueTask *generateSlugTask() {
+    @enqueueTask
+    *generateSlugTask() {
         let title = this.get('post.titleScratch');
 
         // Only set an "untitled" slug once per post
@@ -773,14 +759,8 @@ export default class EditorController extends Controller {
     }
 
     // load supplementel data such as the members count in the background
-    @restartableTask *backgroundLoaderTask() {
-        try {
-            let membersResponse = yield this.store.query('member', {limit: 1, filter: 'subscribed:true'});
-            this.set('memberCount', get(membersResponse, 'meta.pagination.total'));
-        } catch (error) {
-            this.set('memberCount', 0);
-        }
-
+    @restartableTask
+    *backgroundLoaderTask() {
         yield this.store.query('snippet', {limit: 'all'});
     }
 
@@ -869,7 +849,7 @@ export default class EditorController extends Controller {
 
             // if an autosave is scheduled, cancel it, save then transition
             if (this._autosaveRunning) {
-                this.send('cancelAutosave');
+                this.cancelAutosave();
                 this.autosaveTask.cancelAll();
 
                 await this.autosaveTask.perform();
@@ -906,7 +886,7 @@ export default class EditorController extends Controller {
 
         // make sure the save tasks aren't still running in the background
         // after leaving the edit route
-        this.send('cancelAutosave');
+        this.cancelAutosave();
 
         if (post) {
             // clear post of any unsaved, client-generated tags
@@ -926,7 +906,6 @@ export default class EditorController extends Controller {
         this.set('post', null);
         this.set('hasDirtyAttributes', false);
         this.set('shouldFocusTitle', false);
-        this.set('showPostPreviewModal', false);
         this.set('showSettingsMenu', false);
         this.set('wordCount', null);
 
@@ -992,8 +971,8 @@ export default class EditorController extends Controller {
         }
 
         // titleScratch isn't an attr so needs a manual dirty check
-        if (this.titleScratch !== this.title) {
-            this._leaveModalReason = {reason: 'title is different', context: {current: this.title, scratch: this.titleScratch}};
+        if (post.titleScratch !== post.title) {
+            this._leaveModalReason = {reason: 'title is different', context: {current: post.title, scratch: post.titleScratch}};
             return true;
         }
 
@@ -1055,17 +1034,17 @@ export default class EditorController extends Controller {
     async _showScheduledNotification(delayed) {
         let {
             publishedAtUTC,
-            emailRecipientFilter,
             previewUrl,
-            emailOnly
+            emailOnly,
+            newsletter
         } = this.post;
         let publishedAtBlogTZ = moment.tz(publishedAtUTC, this.settings.get('timezone'));
 
         let title = 'Scheduled';
         let description = emailOnly ? ['Will be sent'] : ['Will be published'];
 
-        if (emailRecipientFilter && emailRecipientFilter !== 'none') {
-            const recipientCount = await this.membersCountCache.countString(`subscribed:true+(${emailRecipientFilter})`);
+        if (newsletter) {
+            const recipientCount = await this.membersCountCache.countString(this.post.fullRecipientFilter, {newsletter});
             description.push(`${!emailOnly ? 'and delivered ' : ''}to <span><strong>${recipientCount}</strong></span>`);
         }
 
@@ -1094,7 +1073,7 @@ export default class EditorController extends Controller {
         }
 
         if (isServerUnreachableError(error)) {
-            errorMessage = 'Unable to connect, please check your connection and try again';
+            errorMessage = 'Unable to connect, please check your internet connection and try again';
         } else if (error && isString(error)) {
             errorMessage = error;
         } else if (error && isEmberArray(error)) {

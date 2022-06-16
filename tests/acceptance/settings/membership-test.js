@@ -1,6 +1,5 @@
 import {authenticateSession, invalidateSession} from 'ember-simple-auth/test-support';
 import {blur, click, currentURL, fillIn, find, findAll} from '@ember/test-helpers';
-import {enableLabsFlag} from '../../helpers/labs-flag';
 import {expect} from 'chai';
 import {setupApplicationTest} from 'ember-mocha';
 import {setupMirage} from 'ember-cli-mirage/test-support';
@@ -11,14 +10,11 @@ describe('Acceptance: Settings - Membership', function () {
     setupMirage(hooks);
 
     beforeEach(function () {
-        enableLabsFlag(this.server, 'multipleProducts');
-        enableLabsFlag(this.server, 'tierWelcomePages');
-        enableLabsFlag(this.server, 'tierName');
     });
 
     beforeEach(async function () {
         this.server.loadFixtures('configs');
-        this.server.loadFixtures('products');
+        this.server.loadFixtures('tiers');
 
         this.server.db.configs.update(1, {blogUrl: 'http://localhost:2368'});
 
@@ -160,10 +156,10 @@ describe('Acceptance: Settings - Membership', function () {
         await click('[data-test-default-post-access-tiers] .ember-basic-dropdown-trigger');
 
         // paid tiers are available in tiers input
-        expect(find('[data-test-default-post-access-tiers] [data-test-visibility-segment-option="Default Product"]')).to.exist;
+        expect(find('[data-test-default-post-access-tiers] [data-test-visibility-segment-option="Default Tier"]')).to.exist;
 
         // select tier
-        await click('[data-test-default-post-access-tiers] [data-test-visibility-segment-option="Default Product"]');
+        await click('[data-test-default-post-access-tiers] [data-test-visibility-segment-option="Default Tier"]');
 
         // save
         await click('[data-test-button="save-settings"]');
@@ -200,7 +196,7 @@ describe('Acceptance: Settings - Membership', function () {
         await blur('[data-test-input="free-welcome-page"]');
         await click('[data-test-button="save-settings"]');
 
-        expect(this.server.db.products.findBy({slug: 'free'}).welcomePageUrl)
+        expect(this.server.db.tiers.findBy({slug: 'free'}).welcomePageUrl)
             .to.equal('/not%20a%20url');
 
         // re-rendering will insert full URL in welcome page input
@@ -214,22 +210,22 @@ describe('Acceptance: Settings - Membership', function () {
         // it can manage free tier description and benefits
 
         // initial free tier details are as expected
-        expect(find('[data-test-product-card="free"]')).to.exist;
-        expect(find('[data-test-product-card="free"] [data-test-name]')).to.contain.text('Free');
-        expect(find('[data-test-product-card="free"] [data-test-description]')).to.contain.text('No description');
-        expect(find('[data-test-product-card="free"] [data-test-benefits]')).to.contain.text('No benefits');
-        expect(find('[data-test-product-card="free"] [data-test-free-price]')).to.exist;
+        expect(find('[data-test-tier-card="free"]')).to.exist;
+        expect(find('[data-test-tier-card="free"] [data-test-name]')).to.contain.text('Free');
+        expect(find('[data-test-tier-card="free"] [data-test-description]')).to.contain.text('No description');
+        expect(find('[data-test-tier-card="free"] [data-test-benefits]')).to.contain.text('No benefits');
+        expect(find('[data-test-tier-card="free"] [data-test-free-price]')).to.exist;
 
         // open modal
-        await click('[data-test-product-card="free"] [data-test-button="edit-product"]');
+        await click('[data-test-tier-card="free"] [data-test-button="edit-tier"]');
 
         // initial modal state is as expected
-        const modal = '[data-test-modal="edit-product"]';
+        const modal = '[data-test-modal="edit-tier"]';
         expect(find(modal)).to.exist;
-        expect(find(`${modal} [data-test-input="product-name"]`)).to.not.exist;
-        expect(find(`${modal} [data-test-input="product-description"]`)).to.not.exist;
-        expect(find(`${modal} [data-test-input="free-product-description"]`)).to.exist;
-        expect(find(`${modal} [data-test-input="free-product-description"]`)).to.have.value('');
+        expect(find(`${modal} [data-test-input="tier-name"]`)).to.not.exist;
+        expect(find(`${modal} [data-test-input="tier-description"]`)).to.not.exist;
+        expect(find(`${modal} [data-test-input="free-tier-description"]`)).to.exist;
+        expect(find(`${modal} [data-test-input="free-tier-description"]`)).to.have.value('');
         expect(find(`${modal} [data-test-formgroup="prices"]`)).to.not.exist;
         expect(find(`${modal} [data-test-benefit-item="new"]`)).to.exist;
         expect(findAll(`${modal} [data-test-benefit-item]`).length).to.equal(1);
@@ -240,7 +236,7 @@ describe('Acceptance: Settings - Membership', function () {
         expect(find(`${modal} [data-test-tierpreview-price]`).textContent).to.match(/\$\s+0/);
 
         // can change description
-        await fillIn(`${modal} [data-test-input="free-product-description"]`, 'Test description');
+        await fillIn(`${modal} [data-test-input="free-tier-description"]`, 'Test description');
         expect(find(`${modal} [data-test-tierpreview-description]`)).to.contain.text('Test description');
 
         // can manage benefits
@@ -278,20 +274,19 @@ describe('Acceptance: Settings - Membership', function () {
         const secondBenefitItem = `${modal} [data-test-benefit-item="1"]`;
         await fillIn(`${secondBenefitItem} [data-test-input="benefit-label"]`, '');
 
-        await click('[data-test-button="save-product"]');
+        await click('[data-test-button="save-tier"]');
 
         expect(find(`${modal}`)).to.not.exist;
-        expect(find('[data-test-product-card="free"] [data-test-name]')).to.contain.text('Free');
-        expect(find('[data-test-product-card="free"] [data-test-description]')).to.contain.text('Test description');
-        expect(find('[data-test-product-card="free"] [data-test-benefits]')).to.contain.text('Benefits (1)');
-        expect(find('[data-test-product-card="free"] [data-test-benefits] li:nth-of-type(1)')).to.contain.text('Second benefit');
-        expect(findAll(`[data-test-product-card="free"] [data-test-benefits] li`).length).to.equal(1);
+        expect(find('[data-test-tier-card="free"] [data-test-name]')).to.contain.text('Free');
+        expect(find('[data-test-tier-card="free"] [data-test-description]')).to.contain.text('Test description');
+        expect(find('[data-test-tier-card="free"] [data-test-benefits]')).to.contain.text('Benefits (1)');
+        expect(find('[data-test-tier-card="free"] [data-test-benefits] li:nth-of-type(1)')).to.contain.text('Second benefit');
+        expect(findAll(`[data-test-tier-card="free"] [data-test-benefits] li`).length).to.equal(1);
 
-        const freeProduct = this.server.db.products.findBy({slug: 'free'});
-        expect(freeProduct.description).to.equal('Test description');
-        expect(freeProduct.welcomePageUrl).to.equal('/not%20a%20url');
-        expect(freeProduct.productBenefitIds.length).to.equal(1);
-        const benefits = this.server.db.productBenefits.find(freeProduct.productBenefitIds);
-        expect(benefits[0].name).to.equal('Second benefit');
+        const freeTier = this.server.db.tiers.findBy({slug: 'free'});
+        expect(freeTier.description).to.equal('Test description');
+        expect(freeTier.welcomePageUrl).to.equal('/not%20a%20url');
+        expect(freeTier.benefits.length).to.equal(1);
+        expect(freeTier.benefits[0]).to.equal('Second benefit');
     });
 });

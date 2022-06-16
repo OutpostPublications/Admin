@@ -87,13 +87,14 @@ export default class Email extends Component {
                 return false;
             }
             this.set('sendTestEmailError', '');
-            const url = this.ghostPaths.url.api('/email_preview/posts', resourceId);
+            const url = this.ghostPaths.url.api('/email_previews/posts', resourceId);
             const data = {emails: [testEmail]};
             const options = {
                 data,
                 dataType: 'json'
             };
-            return yield this.ajax.post(url, options);
+            yield this.ajax.post(url, options);
+            return true;
         } catch (error) {
             if (error) {
                 let message = 'Email could not be sent, verify mail settings';

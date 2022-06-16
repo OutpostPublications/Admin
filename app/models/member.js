@@ -19,12 +19,12 @@ export default Model.extend(ValidationEngine, {
     emailCount: attr('number', {defaultValue: 0}),
     emailOpenedCount: attr('number', {defaultValue: 0}),
     emailOpenRate: attr('number'),
+    avatarImage: attr('string'),
 
-    products: attr('member-product'),
+    tiers: attr('member-tier'),
     newsletters: hasMany('newsletter', {embedded: 'always', async: false}),
 
     labels: hasMany('label', {embedded: 'always', async: false}),
-    emailRecipients: hasMany('emailRecipient', {async: true}),
 
     ghostPaths: service(),
     ajax: service(),

@@ -40,8 +40,8 @@ import {tracked} from '@glimmer/tracking';
 /**
  * @typedef PaidMembersByCadence
  * @type {Object}
- * @property {number} annual Paid memebrs on annual plan
- * @property {number} monthly Paid memebrs on monthly plan
+ * @property {number} year Paid memebrs on annual plan
+ * @property {number} month Paid memebrs on monthly plan
  */
 
 /**
@@ -67,6 +67,7 @@ export default class DashboardStatsService extends Service {
     @service ghostPaths;
     @service membersCountCache;
     @service settings;
+    @service membersUtils;
 
     /**
      * @type {?SiteStatus} Contains information on what graphs need to be shown
@@ -78,6 +79,9 @@ export default class DashboardStatsService extends Service {
      */
     @tracked
         memberCountStats = null;
+
+    @tracked
+        subscriptionCountStats = null;
 
     /**
      * @type {?MrrStat[]}
@@ -131,7 +135,7 @@ export default class DashboardStatsService extends Service {
      * @type {number|'all'}
      * Amount of days to load for member count and MRR related charts
      */
-    @tracked chartDays = 7;
+    @tracked chartDays = 30 + 1;
 
     /**
      * Filter last seen by this status
@@ -139,8 +143,12 @@ export default class DashboardStatsService extends Service {
      */
     @tracked lastSeenFilterStatus = 'total';
 
-    paidProducts = null;
- 
+    paidTiers = null;
+
+    get activePaidTiers() {
+        return this.paidTiers ? this.paidTiers.filter(tier => tier.active) : null;
+    }
+
     /**
      * @type {?MemberCounts}
      */
@@ -189,7 +197,7 @@ export default class DashboardStatsService extends Service {
                     paid: stat.paid + stat.comped,
                     free: stat.free
                 };
-            }            
+            }
         }
 
         // We don't have any statistic from more than x days ago.
@@ -217,7 +225,7 @@ export default class DashboardStatsService extends Service {
             const stat = this.mrrStats[index];
             if (stat.date <= searchDate) {
                 return stat.mrr;
-            }            
+            }
         }
 
         // We don't have any statistic from more than x days ago.
@@ -229,14 +237,46 @@ export default class DashboardStatsService extends Service {
         if (this.memberCountStats === null) {
             return null;
         }
-        return this.fillMissingDates(this.memberCountStats, {paid: 0, free: 0, comped: 0, paidCanceled: 0, paidSubscribed: 0}, this.chartDays);
+        function copyData(obj) {
+            return {
+                paid: obj.paid,
+                free: obj.free,
+                comped: obj.comped,
+                paidCanceled: 0,
+                paidSubscribed: 0
+            };
+        }
+        return this.fillMissingDates(this.memberCountStats, {paid: 0, free: 0, comped: 0, paidCanceled: 0, paidSubscribed: 0}, copyData, this.chartDays);
     }
 
     get filledMrrStats() {
         if (this.mrrStats === null) {
             return null;
         }
-        return this.fillMissingDates(this.mrrStats, {mrr: 0}, this.chartDays);
+        function copyData(obj) {
+            return {
+                mrr: obj.mrr
+            };
+        }
+        return this.fillMissingDates(this.mrrStats, {mrr: 0}, copyData, this.chartDays);
+    }
+
+    get filledSubscriptionCountStats() {
+        if (!this.subscriptionCountStats) {
+            return null;
+        }
+        function copyData(obj) {
+            return {
+                count: obj.count,
+                positiveDelta: 0,
+                negativeDelta: 0
+            };
+        }
+        return this.fillMissingDates(this.subscriptionCountStats, {
+            positiveDelta: 0,
+            negativeDelta: 0,
+            count: 0
+        }, copyData, this.chartDays);
     }
 
     loadSiteStatus() {
@@ -256,14 +296,142 @@ export default class DashboardStatsService extends Service {
             return;
         }
 
-        yield this.loadPaidProducts();
+        if (this.membersUtils.paidMembersEnabled) {
+            yield this.loadPaidTiers();
+        }
+
+        const hasPaidTiers = this.membersUtils.paidMembersEnabled && this.activePaidTiers && this.activePaidTiers.length > 0;
 
         this.siteStatus = {
-            hasPaidTiers: this.paidProducts && this.paidProducts.length > 0,
-            hasMultipleTiers: this.paidProducts && this.paidProducts.length > 1,
+            hasPaidTiers,
+            hasMultipleTiers: hasPaidTiers && this.activePaidTiers.length > 1,
             newslettersEnabled: this.settings.get('editorDefaultEmailRecipients') !== 'disabled',
-            membersEnabled: this.settings.get('membersSignupAccess') !== 'none'
+            membersEnabled: this.membersUtils.isMembersEnabled
         };
+    }
+
+    loadPaidMembersByCadence() {
+        this.loadSubscriptionCountStats();
+    }
+
+    loadPaidMembersByTier() {
+        this.loadSubscriptionCountStats();
+    }
+
+    loadSubscriptionCountStats() {
+        if (this._loadSubscriptionCountStats.isRunning) {
+            // We need to explicitly wait for the already running task instead of dropping it and returning immediately
+            return this._loadSubscriptionCountStats.last;
+        }
+        return this._loadSubscriptionCountStats.perform();
+    }
+
+    /**
+     * Loads the subscriptions count history
+     */
+    @task
+    *_loadSubscriptionCountStats() {
+        this.subscriptionCountStats = null;
+        if (this.dashboardMocks.enabled) {
+            yield this.dashboardMocks.waitRandom();
+
+            if (this.dashboardMocks.subscriptionCountStats === null) {
+                // Note: that this shouldn't happen
+                return null;
+            }
+            this.subscriptionCountStats = this.dashboardMocks.subscriptionCountStats;
+            this.paidMembersByCadence = {...this.dashboardMocks.paidMembersByCadence};
+            this.paidMembersByTier = [...this.dashboardMocks.paidMembersByTier];
+            return;
+        }
+
+        let statsUrl = this.ghostPaths.url.api('stats/subscriptions');
+        let result = yield this.ajax.request(statsUrl);
+
+        const paidMembersByCadence = {
+            month: 0,
+            year: 0
+        };
+
+        for (const cadence of result.meta.cadences) {
+            paidMembersByCadence[cadence] = result.meta.totals.reduce((sum, total) => {
+                if (total.cadence !== cadence) {
+                    return sum;
+                }
+                return sum + total.count;
+            }, 0);
+        }
+
+        yield this.loadPaidTiers();
+
+        const paidMembersByTier = [];
+
+        for (const tier of result.meta.tiers) {
+            const _tier = this.paidTiers.find(x => x.id === tier);
+
+            if (!_tier) {
+                continue;
+            }
+            paidMembersByTier.push({
+                tier: {
+                    id: _tier.id,
+                    name: _tier.name
+                },
+                members: result.meta.totals.reduce((sum, total) => {
+                    if (total.tier !== tier) {
+                        return sum;
+                    }
+                    return sum + total.count;
+                }, 0)
+            });
+        }
+
+        // Add all missing tiers without members
+        for (const tier of this.activePaidTiers) {
+            if (!paidMembersByTier.find(t => t.tier.id === tier.id)) {
+                paidMembersByTier.push({
+                    tier: {
+                        id: tier.id,
+                        name: tier.name
+                    },
+                    members: 0
+                });
+            }
+        }
+
+        function mergeDates(list, entry) {
+            const [current, ...rest] = list;
+
+            if (!current) {
+                return entry ? [entry] : [];
+            }
+
+            if (!entry) {
+                return mergeDates(rest, {
+                    date: current.date,
+                    count: current.count,
+                    positiveDelta: current.positive_delta,
+                    negativeDelta: current.negative_delta
+                });
+            }
+
+            if (current.date === entry.date) {
+                return mergeDates(rest, {
+                    date: entry.date,
+                    count: entry.count + current.count,
+                    positiveDelta: entry.positiveDelta + current.positive_delta,
+                    negativeDelta: entry.negativeDelta + current.negative_delta
+                });
+            }
+
+            return [entry].concat(mergeDates(list));
+        }
+
+        const subscriptionCountStats = mergeDates(result.stats);
+
+        this.paidMembersByCadence = paidMembersByCadence;
+        this.paidMembersByTier = paidMembersByTier;
+        this.subscriptionCountStats = subscriptionCountStats;
     }
 
     loadMemberCountStats() {
@@ -390,97 +558,24 @@ export default class DashboardStatsService extends Service {
         this.membersLastSeen7d = result7d;
     }
 
-    loadPaidMembersByCadence() {
-        if (this._loadPaidMembersByCadence.isRunning) {
-            // We need to explicitly wait for the already running task instead of dropping it and returning immediately
-            return this._loadPaidMembersByCadence.last;
+    loadPaidTiers() {
+        if (this.paidTiers !== null) {
+            return;
         }
-        return this._loadPaidMembersByCadence.perform();
+        if (this._loadPaidTiers.isRunning) {
+            // We need to explicitly wait for the already running task instead of dropping it and returning immediately
+            return this._loadPaidTiers.last;
+        }
+        return this._loadPaidTiers.perform();
     }
 
     @task
-    *_loadPaidMembersByCadence() {
-        this.paidMembersByCadence = null;
-
-        if (this.dashboardMocks.enabled) {
-            yield this.dashboardMocks.waitRandom();
-            this.paidMembersByCadence = {...this.dashboardMocks.paidMembersByCadence};
-            return;
-        }
-
-        // We can use the total count to save a call to the API
-        if (!this.memberCounts) {
-            yield this.loadMemberCountStats();
-
-            if (!this.memberCounts) {
-                // console.warn('Failed to fetch member count by cadence: total paid is missing');
-                return;
-            }
-        }
-
-        const monthCount = yield this.membersCountCache.count('subscriptions.plan_interval:month+status:paid');
-        const totalCount = this.memberCounts.paid;
-
-        this.paidMembersByCadence = {
-            monthly: monthCount,
-            annual: totalCount - monthCount
-        };
-    }
-
-    loadPaidProducts() {
-        if (this.paidProducts !== null) {
-            return;
-        }
-        if (this._loadPaidProducts.isRunning) {
-            // We need to explicitly wait for the already running task instead of dropping it and returning immediately
-            return this._loadPaidProducts.last;
-        }
-        return this._loadPaidProducts.perform();
-    }
-
-    @task
-    *_loadPaidProducts() {
-        const data = yield this.store.query('product', {
-            filter: 'type:paid+active:true',
+    *_loadPaidTiers() {
+        const data = yield this.store.query('tier', {
+            filter: 'type:paid',
             limit: 'all'
         });
-        this.paidProducts = data.toArray();
-    }
-
-    loadPaidMembersByTier() {
-        if (this._loadPaidMembersByTier.isRunning) {
-            // We need to explicitly wait for the already running task instead of dropping it and returning immediately
-            return this._loadPaidMembersByTier.last;
-        }
-        return this._loadPaidMembersByTier.perform();
-    }
-
-    @task
-    *_loadPaidMembersByTier() {
-        this.paidMembersByTier = null;
-
-        if (this.dashboardMocks.enabled) {
-            yield this.dashboardMocks.waitRandom();
-            this.paidMembersByTier = this.dashboardMocks.paidMembersByTier.slice();
-            return;
-        }
-
-        yield this.loadPaidProducts();
-        if (!this.paidProducts) {
-            return;
-        }
-
-        const paidMembersByTier = [];
-        
-        for (const product of this.paidProducts) {
-            const members = yield this.membersCountCache.count(`product:[${product.slug}]`);
-            paidMembersByTier.push({
-                tier: product,
-                members
-            });
-        }
-        
-        this.paidMembersByTier = paidMembersByTier;
+        this.paidTiers = data.toArray();
     }
 
     loadNewsletterSubscribers() {
@@ -500,10 +595,10 @@ export default class DashboardStatsService extends Service {
             this.newsletterSubscribers = this.dashboardMocks.newsletterSubscribers;
             return;
         }
-        
+
         const [paid, free] = yield Promise.all([
-            this.membersCountCache.count('subscribed:true+status:-free'),
-            this.membersCountCache.count('subscribed:true+status:free')
+            this.membersCountCache.count('newsletters.status:active+status:-free'),
+            this.membersCountCache.count('newsletters.status:active+status:free')
         ]);
 
         this.newsletterSubscribers = {
@@ -530,7 +625,7 @@ export default class DashboardStatsService extends Service {
             this.emailsSent30d = this.dashboardMocks.emailsSent30d;
             return;
         }
-        
+
         const start30d = new Date(Date.now() - 30 * 86400 * 1000);
         const result = yield this.store.query('email', {limit: 100, filter: 'submitted_at:>' + start30d.toISOString()});
         this.emailsSent30d = result.reduce((c, email) => c + email.emailCount, 0);
@@ -597,8 +692,8 @@ export default class DashboardStatsService extends Service {
         await this._loadSiteStatus.cancelAll();
         await this._loadMrrStats.cancelAll();
         await this._loadMemberCountStats.cancelAll();
+        await this._loadSubscriptionCountStats.cancelAll();
         await this._loadLastSeen.cancelAll();
-        await this._loadPaidMembersByCadence.cancelAll();
         await this._loadNewsletterSubscribers.cancelAll();
         await this._loadEmailsSent.cancelAll();
         await this._loadEmailOpenRateStats.cancelAll();
@@ -608,6 +703,7 @@ export default class DashboardStatsService extends Service {
 
         this.loadMrrStats();
         this.loadMemberCountStats();
+        this.loadSubscriptionCountStats();
         this.loadLastSeen();
         this.loadPaidMembersByCadence();
         this.loadPaidMembersByTier();
@@ -623,7 +719,7 @@ export default class DashboardStatsService extends Service {
      * @param {MemberCountStat|MrrStat} defaultData
      * @param {number|'all'} days Amount of days to fill the graph with
      */
-    fillMissingDates(data, defaultData, days) {
+    fillMissingDates(data, defaultData, copyData, days) {
         let currentRangeDate;
 
         if (days === 'all') {
@@ -666,7 +762,14 @@ export default class DashboardStatsService extends Service {
         while (currentRangeDate.isBefore(endDate)) {
             let dateStr = currentRangeDate.format('YYYY-MM-DD');
             const dataOnDate = data.find(d => d.date === dateStr);
-            lastVal = dataOnDate ? dataOnDate : {...lastVal, date: dateStr, paidCanceled: 0, paidSubscribed: 0};
+            if (dataOnDate) {
+                lastVal = dataOnDate;
+            } else {
+                lastVal = {
+                    date: dateStr,
+                    ...copyData(lastVal)
+                };
+            }
             output.push(lastVal);
             currentRangeDate = currentRangeDate.add(1, 'day');
         }

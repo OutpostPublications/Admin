@@ -6,19 +6,19 @@ export default class Post extends ApplicationAdapter {
         const url = this.buildURL(modelName, id, snapshot, requestType, query);
         const parsedUrl = new URL(url);
 
-        if (snapshot?.adapterOptions?.sendEmailWhenPublished) {
-            let emailRecipientFilter = snapshot.adapterOptions.sendEmailWhenPublished;
+        if (snapshot?.adapterOptions?.newsletter) {
+            const newsletter = snapshot.adapterOptions.newsletter;
+            parsedUrl.searchParams.append('newsletter', newsletter);
 
-            if (emailRecipientFilter === 'status:free,status:-free') {
-                emailRecipientFilter = 'all';
+            let emailSegment = snapshot?.adapterOptions?.emailSegment;
+
+            if (emailSegment) {
+                if (emailSegment === 'status:free,status:-free') {
+                    emailSegment = 'all';
+                }
+
+                parsedUrl.searchParams.append('email_segment', emailSegment);
             }
-
-            parsedUrl.searchParams.append('email_recipient_filter', emailRecipientFilter);
-        }
-
-        if (snapshot?.adapterOptions?.newsletterId) {
-            const newsletterId = snapshot.adapterOptions.newsletterId;
-            parsedUrl.searchParams.append('newsletter_id', newsletterId);
         }
 
         return parsedUrl.toString();
